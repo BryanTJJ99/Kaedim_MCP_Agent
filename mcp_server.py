@@ -4,32 +4,30 @@ Kaedim MCP Server for Request Validation and Assignment
 Provides tools and resources for AI agents to validate, plan, and assign 3D asset requests
 """
 
-import json
 import asyncio
+import json
 import logging
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, asdict
-from pathlib import Path
 import uuid
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from mcp.server import Server, NotificationOptions
-from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 import mcp.types as types
+from mcp.server import NotificationOptions, Server
+from mcp.server.models import InitializationOptions
 
 print("Starting Kaedim MCP Server...")
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('mcp.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("mcp.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class RuleMatch:
@@ -37,6 +35,7 @@ class RuleMatch:
     condition: Dict[str, Any]
     action: Dict[str, Any]
     matched: bool = False
+
 
 @dataclass
 class Decision:
@@ -50,41 +49,42 @@ class Decision:
     trace: List[Dict[str, Any]]
     status: str  # 'success', 'validation_failed', 'assignment_failed'
 
+
 class KaedimMCPServer:
     def __init__(self, data_dir: Path = Path("./data")):
         self.server = Server("kaedim-mcp-server")
         self.data_dir = data_dir
         self.decisions: List[Decision] = []
-        
+
         # Load data
         self.requests = self._load_json("requests.json")
         self.artists = self._load_json("artists.json")
         self.presets = self._load_json("presets.json")
         self.rules = self._load_json("rules.json")
-        
+
         # Setup handlers
         self._setup_handlers()
-        
+
     def _load_json(self, filename: str) -> Any:
         """Load JSON data from file"""
         filepath = self.data_dir / filename
         if filepath.exists():
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 return json.load(f)
         return {} if filename == "presets.json" else []
-    
+
     def _emit_event(self, event_type: str, data: Dict[str, Any]):
         """Emit event for observability"""
         event = {
             "type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "data": data
+            "data": data,
         }
         logger.info(f"Event: {json.dumps(event)}")
-        
+
     def _setup_handlers(self):
         """Setup MCP handlers"""
-        
+
         @self.server.list_resources()
         async def handle_list_resources() -> list[types.Resource]:
             """List available resources"""
@@ -114,22 +114,30 @@ class KaedimMCPServer:
                     mimeType="application/json",
                 ),
             ]
-        
+
         @self.server.read_resource()
         async def handle_read_resource(uri: str) -> str:
             """Read resource data"""
+            # Convert URI to string if it's an AnyUrl object
+            uri_str = str(uri)
+            logger.info(f"Reading resource: {uri_str}")
+
             resource_map = {
                 "resource://requests": self.requests,
                 "resource://artists": self.artists,
                 "resource://presets": self.presets,
                 "resource://rules": self.rules,
             }
-            
-            if uri in resource_map:
-                return json.dumps(resource_map[uri], indent=2)
+
+            if uri_str in resource_map:
+                data = resource_map[uri_str]
+                result = json.dumps(data, indent=2)
+                logger.info(f"Successfully returning data for {uri_str}")
+                return result
             else:
-                raise ValueError(f"Unknown resource: {uri}")
-        
+                logger.error(f"Unknown resource: {uri_str}")
+                raise RuntimeError(f"Unknown resource: {uri_str}")
+
         @self.server.list_tools()
         async def handle_list_tools() -> list[types.Tool]:
             """List available tools"""
@@ -140,8 +148,14 @@ class KaedimMCPServer:
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "request_id": {"type": "string", "description": "Request ID to validate"},
-                            "account_id": {"type": "string", "description": "Customer account ID"},
+                            "request_id": {
+                                "type": "string",
+                                "description": "Request ID to validate",
+                            },
+                            "account_id": {
+                                "type": "string",
+                                "description": "Customer account ID",
+                            },
                         },
                         "required": ["request_id", "account_id"],
                     },
@@ -152,7 +166,10 @@ class KaedimMCPServer:
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "request_id": {"type": "string", "description": "Request ID to plan"},
+                            "request_id": {
+                                "type": "string",
+                                "description": "Request ID to plan",
+                            },
                         },
                         "required": ["request_id"],
                     },
@@ -163,7 +180,10 @@ class KaedimMCPServer:
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "request_id": {"type": "string", "description": "Request ID to assign"},
+                            "request_id": {
+                                "type": "string",
+                                "description": "Request ID to assign",
+                            },
                         },
                         "required": ["request_id"],
                     },
@@ -174,17 +194,20 @@ class KaedimMCPServer:
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "request_id": {"type": "string", "description": "Request ID"},
+                            "request_id": {
+                                "type": "string",
+                                "description": "Request ID",
+                            },
                             "decision": {
                                 "type": "object",
-                                "description": "Decision details including validation, plan, and assignment"
+                                "description": "Decision details including validation, plan, and assignment",
                             },
                         },
                         "required": ["request_id", "decision"],
                     },
                 ),
             ]
-        
+
         @self.server.call_tool()
         async def handle_call_tool(
             name: str, arguments: dict
@@ -192,12 +215,11 @@ class KaedimMCPServer:
             """Handle tool calls"""
             start_time = datetime.now(timezone.utc)
             self._emit_event("tool.called", {"tool": name, "arguments": arguments})
-            
+
             try:
                 if name == "validate_preset":
                     result = await self._validate_preset(
-                        arguments["request_id"],
-                        arguments["account_id"]
+                        arguments["request_id"], arguments["account_id"]
                     )
                 elif name == "plan_steps":
                     result = await self._plan_steps(arguments["request_id"])
@@ -205,176 +227,177 @@ class KaedimMCPServer:
                     result = await self._assign_artist(arguments["request_id"])
                 elif name == "record_decision":
                     result = await self._record_decision(
-                        arguments["request_id"],
-                        arguments["decision"]
+                        arguments["request_id"], arguments["decision"]
                     )
                 else:
                     raise ValueError(f"Unknown tool: {name}")
-                
-                duration_ms = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
-                self._emit_event("tool.completed", {
-                    "tool": name,
-                    "duration_ms": duration_ms,
-                    "success": True
-                })
-                
-                return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
-                
+
+                duration_ms = int(
+                    (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+                )
+                self._emit_event(
+                    "tool.completed",
+                    {"tool": name, "duration_ms": duration_ms, "success": True},
+                )
+
+                return [
+                    types.TextContent(type="text", text=json.dumps(result, indent=2))
+                ]
+
             except Exception as e:
-                self._emit_event("tool.failed", {
-                    "tool": name,
-                    "error": str(e)
-                })
+                self._emit_event("tool.failed", {"tool": name, "error": str(e)})
                 raise
-    
+
     async def _validate_preset(self, request_id: str, account_id: str) -> Dict[str, Any]:
         """Validate request against customer preset"""
         request = next((r for r in self.requests if r["id"] == request_id), None)
         if not request:
             return {"ok": False, "errors": [f"Request {request_id} not found"]}
-        
+
         preset = self.presets.get(account_id, {})
         errors = []
-        
+
         # Check naming pattern
         if "naming" in preset:
             pattern = preset["naming"].get("pattern", "")
             if not pattern:
                 errors.append("Missing naming pattern in preset")
-        
+
         # Check 4-channel texture packing
         if "packing" in preset:
             packing = preset["packing"]
-            required_channels = ['r', 'g', 'b', 'a']
+            required_channels = ["r", "g", "b", "a"]
             missing_channels = [ch for ch in required_channels if ch not in packing]
-            
+
             if missing_channels:
-                errors.append(f"Missing texture channels: {', '.join(missing_channels)}")
-                self._emit_event("validation.failed", {
-                    "request_id": request_id,
-                    "account_id": account_id,
-                    "error": "invalid_texture_packing",
-                    "missing_channels": missing_channels
-                })
+                errors.append(
+                    f"Missing texture channels: {', '.join(missing_channels)}"
+                )
+                self._emit_event(
+                    "validation.failed",
+                    {
+                        "request_id": request_id,
+                        "account_id": account_id,
+                        "error": "invalid_texture_packing",
+                        "missing_channels": missing_channels,
+                    },
+                )
         else:
             errors.append("No texture packing configuration found")
-        
+
         # Check version
         if "version" not in preset:
             errors.append("Preset version not specified")
-        
+
         ok = len(errors) == 0
-        
+
         return {
             "ok": ok,
             "errors": errors,
             "preset_version": preset.get("version"),
-            "validation_timestamp": datetime.now(timezone.utc).isoformat()
+            "validation_timestamp": datetime.now(timezone.utc).isoformat(),
         }
-    
+
     async def _plan_steps(self, request_id: str) -> Dict[str, Any]:
         """Generate processing steps based on rules"""
         request = next((r for r in self.requests if r["id"] == request_id), None)
         if not request:
-            return {"steps": [], "matched_rules": [], "error": f"Request {request_id} not found"}
-        
+            return {
+                "steps": [],
+                "matched_rules": [],
+                "error": f"Request {request_id} not found",
+            }
+
         steps = ["initial_review", "modeling", "texturing", "qa_check", "delivery"]
         matched_rules = []
-        
+
         # Apply rules
         for rule in self.rules:
             conditions = rule.get("if", {})
             actions = rule.get("then", {})
-            
+
             # Check if all conditions match
             all_match = all(
-                request.get(key) == value
-                for key, value in conditions.items()
+                request.get(key) == value for key, value in conditions.items()
             )
-            
+
             if all_match:
                 matched_rule = RuleMatch(
                     rule_id=f"rule_{self.rules.index(rule)}",
                     condition=conditions,
                     action=actions,
-                    matched=True
+                    matched=True,
                 )
                 matched_rules.append(matched_rule)
-                
+
                 # Add steps from rule
                 if "steps" in actions:
                     for step in actions["steps"]:
                         if step not in steps:
                             # Insert specialized steps before qa_check
                             steps.insert(-2, step)
-        
+
         return {
             "steps": steps,
             "matched_rules": [
-                {
-                    "rule_id": r.rule_id,
-                    "condition": r.condition,
-                    "action": r.action
-                }
+                {"rule_id": r.rule_id, "condition": r.condition, "action": r.action}
                 for r in matched_rules
             ],
             "estimated_hours": len(steps) * 2,  # Simple estimate
-            "priority_queue": any("expedite" in r.action.get("queue", "") for r in matched_rules)
+            "priority_queue": any(
+                "expedite" in r.action.get("queue", "") for r in matched_rules
+            ),
         }
-    
+
     async def _assign_artist(self, request_id: str) -> Dict[str, Any]:
         """Assign request to optimal artist"""
         request = next((r for r in self.requests if r["id"] == request_id), None)
         if not request:
             return {"artist_id": None, "reason": f"Request {request_id} not found"}
-        
+
         style = request.get("style", "")
         engine = request.get("engine", "").lower()
         topology = request.get("topology", "")
-        
+
         # Score artists based on skills and capacity
         artist_scores = []
-        
+
         for artist in self.artists:
             score = 0
             reasons = []
-            
+
             # Check skill match
             skills = [s.lower() for s in artist.get("skills", [])]
-            
+
             if style in skills or style.replace("_", " ") in " ".join(skills):
                 score += 10
                 reasons.append(f"matches style {style}")
-            
+
             if engine in skills:
                 score += 5
                 reasons.append(f"matches engine {engine}")
-            
+
             if topology and topology in " ".join(skills):
                 score += 5
                 reasons.append(f"matches topology {topology}")
-            
+
             # Check capacity
             capacity = artist.get("capacity_concurrent", 1)
             load = artist.get("active_load", 0)
             available_capacity = capacity - load
-            
+
             if available_capacity > 0:
                 score += available_capacity * 2
                 reasons.append(f"has {available_capacity} slots available")
             else:
                 score = 0  # Can't assign if at capacity
                 reasons = ["at full capacity"]
-            
-            artist_scores.append({
-                "artist": artist,
-                "score": score,
-                "reasons": reasons
-            })
-        
+
+            artist_scores.append({"artist": artist, "score": score, "reasons": reasons})
+
         # Sort by score
         artist_scores.sort(key=lambda x: x["score"], reverse=True)
-        
+
         if artist_scores and artist_scores[0]["score"] > 0:
             selected = artist_scores[0]
             return {
@@ -383,18 +406,25 @@ class KaedimMCPServer:
                 "reason": f"Best match: {', '.join(selected['reasons'])}",
                 "match_score": selected["score"],
                 "alternative_artists": [
-                    {"id": a["artist"]["id"], "name": a["artist"]["name"], "score": a["score"]}
-                    for a in artist_scores[1:3] if a["score"] > 0
-                ]
+                    {
+                        "id": a["artist"]["id"],
+                        "name": a["artist"]["name"],
+                        "score": a["score"],
+                    }
+                    for a in artist_scores[1:3]
+                    if a["score"] > 0
+                ],
             }
         else:
             return {
                 "artist_id": None,
                 "reason": "No available artists with matching skills",
-                "alternative_artists": []
+                "alternative_artists": [],
             }
-    
-    async def _record_decision(self, request_id: str, decision_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _record_decision(
+        self, request_id: str, decision_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Record routing decision"""
         decision = Decision(
             id=str(uuid.uuid4()),
@@ -405,28 +435,29 @@ class KaedimMCPServer:
             assignment=decision_data.get("assignment", {}),
             rationale=decision_data.get("rationale", ""),
             trace=decision_data.get("trace", []),
-            status=decision_data.get("status", "unknown")
+            status=decision_data.get("status", "unknown"),
         )
-        
+
         self.decisions.append(decision)
-        
-        # Save to file
-        decisions_file = self.data_dir / "decisions.json"
-        with open(decisions_file, 'w') as f:
-            json.dump([asdict(d) for d in self.decisions], f, indent=2)
-        
-        self._emit_event("decision.recorded", {
-            "decision_id": decision.id,
-            "request_id": request_id,
-            "status": decision.status
-        })
-        
+
+        # Note: File output is handled by the MCP client, not the server
+        # This keeps the server stateless and focused on tool execution
+
+        self._emit_event(
+            "decision.recorded",
+            {
+                "decision_id": decision.id,
+                "request_id": request_id,
+                "status": decision.status,
+            },
+        )
+
         return {
             "decision_id": decision.id,
             "recorded_at": decision.timestamp,
-            "status": decision.status
+            "status": decision.status,
         }
-    
+
     async def run(self):
         """Run the MCP server"""
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
@@ -438,18 +469,19 @@ class KaedimMCPServer:
                     experimental_capabilities={},
                 ),
             )
-            
+
             await self.server.run(
                 read_stream,
                 write_stream,
                 init_options,
             )
 
+
 if __name__ == "__main__":
     import sys
-    
+
     # Set data directory from command line or use default
     data_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("./data")
-    
+
     server = KaedimMCPServer(data_dir)
     asyncio.run(server.run())
