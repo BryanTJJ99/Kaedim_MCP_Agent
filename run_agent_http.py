@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# run_agent.py
+# run_agent_http.py
 """
-Kaedim MCP Client — MCPAgent + LLMEnhancedMCPAgent only
+Kaedim MCP Client — HTTP transport
 
-- MCPAgent: connects to the MCP server (spawns subprocess), calls tools, writes decisions.json
+- MCPAgent: connects to the HTTP MCP server, calls tools, writes decisions.json
 - LLMEnhancedMCPAgent: same as MCPAgent, but uses an LLM to polish customer-facing messages
 """
 
@@ -23,14 +23,9 @@ try:
     from dotenv import load_dotenv
     load_dotenv(dotenv_path=Path(".env"))
 except Exception:
-    # It's fine if python-dotenv isn't installed; we just rely on env vars.
     pass
 
-# -------------------------------
-# MCP imports
-# -------------------------------
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+import httpx
 
 # -------------------------------
 # Optional LLM integration
@@ -41,7 +36,6 @@ try:
 except Exception:
     HAS_OPENAI = False
 
-
 # -------------------------------
 # Logging
 # -------------------------------
@@ -50,7 +44,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
 
 # -------------------------------
 # Data classes
@@ -70,27 +63,26 @@ class Decision:
     metrics: Dict[str, Any]
     timestamp: str
 
-
 # =========================================================
-# MCPAgent — spawns server, manages session, performs work
+# MCPAgent — HTTP client
 # =========================================================
 class MCPAgent:
     """
-    Agent that connects to the MCP server via stdio, calls its tools, and records decisions.
+    Agent that connects to the MCP HTTP server, calls its tools, and records decisions.
     """
 
     def __init__(
         self,
-        server_script: str = "mcp_server.py",
-        data_dir: Path = Path("data"),
-        python_bin: Optional[str] = None,  # path to the virtualenv python if needed
+        base_url: str = None,
+        data_dir: Path = Path("data"),   # still used to infer where your JSON lives (server reads its own dir)
+        api_token: Optional[str] = None, # if server has MCP_HTTP_TOKEN set
     ):
-        self.server_script = str(Path(server_script).resolve())
-        self.data_dir = Path(data_dir)
-        self.python_bin = python_bin or os.getenv("PYTHON_BIN")  # optional override
-        self.session: Optional[ClientSession] = None
+        # Server base URL (e.g., http://127.0.0.1:8765)
+        self.base_url = base_url or os.getenv("MCP_HTTP_BASE_URL", "http://127.0.0.1:8765")
+        self.api_token = api_token or os.getenv("MCP_HTTP_TOKEN")
+        self.client: Optional[httpx.AsyncClient] = None
         self.decisions: List[Decision] = []
-        self._stdio_ctx = None  # stdio_client context
+        self.data_dir = Path(data_dir)
 
     # ---------- lifecycle ----------
     async def __aenter__(self):
@@ -102,74 +94,62 @@ class MCPAgent:
 
     async def connect(self):
         """
-        Start the MCP server as a subprocess and create a ClientSession over stdio.
+        Connect (create HTTP client and perform initialize handshake).
+        Note: This does not spawn the server; run your server separately.
         """
-        logger.info("Connecting to MCP server...")
+        headers = {}
+        if self.api_token:
+            headers["Authorization"] = f"Bearer {self.api_token}"
 
-        # Resolve which python to use to spawn the server
-        py = self.python_bin or os.getenv("VIRTUAL_ENV_PY") or "python"
-        server_params = StdioServerParameters(
-            command=py,
-            args=["-u", self.server_script, str(self.data_dir)],
-            env=None,
-        )
-        logger.info(f"Launching MCP server: {server_params.command} {server_params.args}")
+        self.client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=60.0)
+        logger.info(f"Connecting to MCP HTTP server at {self.base_url} ...")
+        resp = await self.client.post("/initialize")
+        resp.raise_for_status()
+        info = resp.json()
+        logger.info(f"Connected: {info.get('server_name')} v{info.get('server_version')}")
 
-        self._stdio_ctx = stdio_client(server_params)
-        read_stream, write_stream = await self._stdio_ctx.__aenter__()
-
-        # Create and enter client session
-        self.session = ClientSession(read_stream, write_stream)
-        await self.session.__aenter__()     # ensure background tasks start
-        await self.session.initialize()     # handshake
-        logger.info("Connected to MCP server successfully")
-
-        # Optional: show tools/resources for debug
-        tools_res = await self.session.list_tools()
-        logger.info(f"Available tools: {[t.name for t in tools_res.tools]}")
-        res_res = await self.session.list_resources()
-        logger.info(f"Available resources: {[r.uri for r in res_res.resources]}")
+        # Optional: list tools/resources for debug
+        tools = (await self.client.get("/tools")).json()["tools"]
+        logger.info(f"Available tools: {[t['name'] for t in tools]}")
+        resources = (await self.client.get("/resources")).json()["resources"]
+        logger.info(f"Available resources: {[r['uri'] for r in resources]}")
 
     async def disconnect(self):
-        """Tear down session and stdio pipes (which also stops the spawned server)."""
-        if self.session:
-            await self.session.__aexit__(None, None, None)
-            self.session = None
+        if self.client:
+            await self.client.aclose()
+            self.client = None
+        logger.info("Disconnected from MCP HTTP server")
 
-        if self._stdio_ctx:
-            await self._stdio_ctx.__aexit__(None, None, None)
-            self._stdio_ctx = None
-
-        logger.info("Disconnected from MCP server")
-
-    # ---------- MCP calls ----------
+    # ---------- HTTP calls ----------
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        if not self.session:
-            raise RuntimeError("Not connected to MCP server")
+        if not self.client:
+            raise RuntimeError("Not connected to MCP HTTP server")
         logger.info(f"Calling MCP tool: {tool_name} with args: {arguments}")
-        result = await self.session.call_tool(tool_name, arguments)
-        if result.content and len(result.content) > 0:
-            return json.loads(result.content[0].text)
+        resp = await self.client.post("/call_tool", json={"name": tool_name, "arguments": arguments})
+        resp.raise_for_status()
+        payload = resp.json()
+        # emulate the stdio client behavior: parse first text content as JSON
+        content = payload.get("content", [])
+        if content:
+            return json.loads(content[0]["text"])
         return {}
 
     async def read_resource(self, uri: str) -> Any:
-        if not self.session:
-            raise RuntimeError("Not connected to MCP server")
+        if not self.client:
+            raise RuntimeError("Not connected to MCP HTTP server")
         logger.info(f"Reading MCP resource: {uri}")
-        result = await self.session.read_resource(uri)
-        if result.contents and len(result.contents) > 0:
-            return json.loads(result.contents[0].text)
-        return None
+        resp = await self.client.get("/resource", params={"uri": uri})
+        resp.raise_for_status()
+        return resp.json()
 
     # ---------- core processing ----------
     async def process_all_requests(self) -> List[Decision]:
-        """Load all requests via resource://requests and process them."""
         requests = await self.read_resource("resource://requests")
         if not requests:
             logger.warning("No requests found")
             return []
 
-        logger.info(f"Processing {len(requests)} requests via MCP")
+        logger.info(f"Processing {len(requests)} requests via MCP HTTP")
         for req in requests:
             try:
                 decision = await self.process_request(req["id"])
@@ -180,28 +160,16 @@ class MCPAgent:
         return self.decisions
 
     async def process_request(self, request_id: str) -> Decision:
-        """
-        Standard decision flow:
-          1) validate_preset
-          2) plan_steps
-          3) assign_artist
-          4) synthesize decision (status, rationale, customer messaging)
-          5) record_decision
-        """
         start_time = datetime.now()
         trace: List[Dict[str, Any]] = []
 
-        # Read the request from resource
         requests = await self.read_resource("resource://requests")
         request = next((r for r in requests if r["id"] == request_id), None)
         if not request:
             raise ValueError(f"Request {request_id} not found")
 
         # 1) Validate preset
-        validation_result = await self.call_tool(
-            "validate_preset",
-            {"request_id": request_id, "account_id": request["account"]},
-        )
+        validation_result = await self.call_tool("validate_preset", {"request_id": request_id, "account_id": request["account"]})
         trace.append({"step": "validate_preset", "result": validation_result, "timestamp": datetime.now().isoformat()})
 
         # 2) Plan steps
@@ -226,7 +194,6 @@ class MCPAgent:
             customer_message = None
             clarifying_question = None
 
-        # Rationale is always plain, natural-language text (no LLM required)
         rationale = self._rationale_from_parts(request, validation_result, plan_result, assignment_result, status)
 
         decision = Decision(
@@ -280,7 +247,6 @@ class MCPAgent:
                 f"Configuration issue for {account}: Your texture packing appears incomplete. "
                 f"Please configure all RGBA channels so we can generate engine-ready textures."
             )
-        # Default fallback
         return f"Validation error: {errors[0] if errors else 'Unknown issue'}"
 
     def _clarifying_question_from_validation(self, validation: Dict[str, Any]) -> str:
@@ -289,44 +255,35 @@ class MCPAgent:
             return "Would you like us to apply default channel mappings now, or wait for your preset update?"
         return "Would you like help updating your preset?"
 
-
 # =========================================================
 # LLMEnhancedMCPAgent — inherits MCPAgent, adds LLM polish
 # =========================================================
 class LLMEnhancedMCPAgent(MCPAgent):
-    """
-    Extends MCPAgent. If a decision is not 'success', uses an LLM to produce a clearer
-    customer_message. Reads OPENAI_API_KEY / OPENAI_MODEL / OPENAI_BASE_URL from env.
-    """
-
     def __init__(
         self,
-        server_script: str = "mcp_server.py",
+        base_url: str = None,
         data_dir: Path = Path("data"),
-        python_bin: Optional[str] = None,
+        api_token: Optional[str] = None,
         model: Optional[str] = None,
         api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
+        base_url_llm: Optional[str] = None,
     ):
-        super().__init__(server_script, data_dir, python_bin)
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4")
+        super().__init__(base_url=base_url, data_dir=data_dir, api_token=api_token)
+        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
-
+        self.base_url_llm = base_url_llm or os.getenv("OPENAI_BASE_URL")
         if HAS_OPENAI and self.api_key:
-            if self.base_url:
-                self.llm_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+            if self.base_url_llm:
+                self.llm_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url_llm)
             else:
                 self.llm_client = AsyncOpenAI(api_key=self.api_key)
-            logger.info(f"LLM wired: model={self.model} | key_set=True | base_url={self.base_url or 'default'}")
+            logger.info(f"LLM wired: model={self.model} | key_set=True | base_url={self.base_url_llm or 'default'}")
         else:
             self.llm_client = None
             logger.info("LLM disabled (missing openai package or OPENAI_API_KEY).")
 
     async def process_request(self, request_id: str) -> Decision:
         decision = await super().process_request(request_id)
-
-        # If not success and LLM is configured, refine the customer-facing message
         if self.llm_client and decision.status != "success":
             try:
                 resp = await self.llm_client.chat.completions.create(
@@ -341,19 +298,13 @@ class LLMEnhancedMCPAgent(MCPAgent):
                 enhanced = resp.choices[0].message.content
                 decision.customer_message = enhanced
                 decision.metrics["llm_enhanced"] = True
-
                 usage = getattr(resp, "usage", None)
                 if usage and hasattr(usage, "total_tokens"):
                     decision.metrics["tokens_used"] = usage.total_tokens
-
-                # Optional: log the refined message for visibility
                 logger.info(f"\n--- LLM customer_message for {decision.request_id} ---\n{enhanced}\n--- end ---\n")
-
             except Exception as e:
                 logger.warning(f"LLM enhancement failed: {e}")
-
         return decision
-
 
 # =========================================================
 # CLI entrypoint
@@ -361,43 +312,43 @@ class LLMEnhancedMCPAgent(MCPAgent):
 async def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Kaedim MCP Client")
+    parser = argparse.ArgumentParser(description="Kaedim MCP Client (HTTP)")
     parser.add_argument("--requests", required=True, help="Path to requests JSON file")
-    parser.add_argument("--artists", required=True, help="Path to artists JSON file")
-    parser.add_argument("--presets", required=True, help="Path to presets JSON file")
-    parser.add_argument("--rules", required=True, help="Path to rules JSON file")
-    parser.add_argument("--server", default="mcp_server.py")
+    parser.add_argument("--artists",  required=True, help="Path to artists JSON file")
+    parser.add_argument("--presets",  required=True, help="Path to presets JSON file")
+    parser.add_argument("--rules",    required=True, help="Path to rules JSON file")
+    parser.add_argument("--server-url", default=None, help="Base URL of the running HTTP server (e.g., http://127.0.0.1:8765)")
     parser.add_argument("--agent-type", choices=["mcp", "llm"], default="mcp")
     parser.add_argument("--output", type=Path, default=Path("decisions.json"))
-    parser.add_argument("--python-bin", default=None, help="Optional path to Python used to spawn the MCP server")
-
+    parser.add_argument("--api-token", default=None, help="Bearer token if the server requires it")
     args = parser.parse_args()
 
-    # Data dir inferred from the requests path (your server reads from ./data)
+    # The server reads its own data dir; we infer it from the requests path so both point at the same folder
     data_dir = Path(args.requests).parent
 
+    base_url = args.server_url or os.getenv("MCP_HTTP_BASE_URL", "http://127.0.0.1:8765")
+    api_token = args.api_token or os.getenv("MCP_HTTP_TOKEN")
+
     if args.agent_type == "mcp":
-        agent = MCPAgent(server_script=args.server, data_dir=data_dir, python_bin=args.python_bin)
+        agent = MCPAgent(base_url=base_url, data_dir=data_dir, api_token=api_token)
     else:
-        agent = LLMEnhancedMCPAgent(server_script=args.server, data_dir=data_dir, python_bin=args.python_bin)
+        agent = LLMEnhancedMCPAgent(base_url=base_url, data_dir=data_dir, api_token=api_token)
 
     await agent.connect()
     decisions = await agent.process_all_requests()
     await agent.disconnect()
 
-    # Save results
     with open(args.output, "w") as f:
         json.dump([asdict(d) for d in decisions], f, indent=2)
 
     # Summary
     print(f"\n{'='*60}")
-    print("MCP Processing Complete")
+    print("MCP Processing Complete (HTTP)")
     print(f"{'='*60}")
     print(f"Requests processed: {len(decisions)}")
     print(f"Successful: {sum(1 for d in decisions if d.status == 'success')}")
     print(f"Failed: {sum(1 for d in decisions if d.status != 'success')}")
     print(f"\nResults saved to: {args.output}")
-
 
 if __name__ == "__main__":
     asyncio.run(main())

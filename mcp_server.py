@@ -7,6 +7,7 @@ Provides tools and resources for AI agents to validate, plan, and assign 3D asse
 import asyncio
 import json
 import logging
+import sys
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -18,15 +19,20 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 
-print("Starting Kaedim MCP Server...")
 
-# Configure logging
+
+# ✅ Configure logging to use stderr for console output
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("mcp.log"), logging.StreamHandler()],
+    handlers=[
+        logging.FileHandler("mcp.log"),
+        logging.StreamHandler(sys.stderr),  # 👈 now stderr, not stdout
+    ],
 )
 logger = logging.getLogger(__name__)
+
+logger.info("Starting Kaedim MCP Server...")
 
 
 @dataclass
@@ -469,6 +475,8 @@ class KaedimMCPServer:
                     experimental_capabilities={},
                 ),
             )
+
+            logger.info("KaedimMCPServer.run() starting event loop...")
 
             await self.server.run(
                 read_stream,
