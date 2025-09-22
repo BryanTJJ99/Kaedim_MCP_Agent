@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # run_agent.py
 """
-Kaedim MCP Client — MCPAgent + LLMEnhancedMCPAgent only
+Kaedim MCP Client — MCPAgent + LLMEnhancedMCPAgent
 
 - MCPAgent: connects to the MCP server (spawns subprocess), calls tools, writes decisions.json
 - LLMEnhancedMCPAgent: same as MCPAgent, but uses an LLM to polish customer-facing messages
@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 # -------------------------------
 try:
     from dotenv import load_dotenv
+
     load_dotenv(dotenv_path=Path(".env"))
 except Exception:
     # It's fine if python-dotenv isn't installed; we just rely on env vars.
@@ -37,6 +38,7 @@ from mcp.client.stdio import stdio_client
 # -------------------------------
 try:
     from openai import AsyncOpenAI
+
     HAS_OPENAI = True
 except Exception:
     HAS_OPENAI = False
@@ -113,15 +115,17 @@ class MCPAgent:
             args=["-u", self.server_script, str(self.data_dir)],
             env=None,
         )
-        logger.info(f"Launching MCP server: {server_params.command} {server_params.args}")
+        logger.info(
+            f"Launching MCP server: {server_params.command} {server_params.args}"
+        )
 
         self._stdio_ctx = stdio_client(server_params)
         read_stream, write_stream = await self._stdio_ctx.__aenter__()
 
         # Create and enter client session
         self.session = ClientSession(read_stream, write_stream)
-        await self.session.__aenter__()     # ensure background tasks start
-        await self.session.initialize()     # handshake
+        await self.session.__aenter__()  # ensure background tasks start
+        await self.session.initialize()  # handshake
         logger.info("Connected to MCP server successfully")
 
         # Optional: show tools/resources for debug
@@ -143,7 +147,9 @@ class MCPAgent:
         logger.info("Disconnected from MCP server")
 
     # ---------- MCP calls ----------
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def call_tool(
+        self, tool_name: str, arguments: Dict[str, Any]
+    ) -> Dict[str, Any]:
         if not self.session:
             raise RuntimeError("Not connected to MCP server")
         logger.info(f"Calling MCP tool: {tool_name} with args: {arguments}")
@@ -163,7 +169,9 @@ class MCPAgent:
 
     # ---------- core processing ----------
     async def process_all_requests(self) -> List[Decision]:
-        """Load all requests via resource://requests and process them."""
+        """Load requests (and other resources for observability) and process them."""
+
+        # Primary workload
         requests = await self.read_resource("resource://requests")
         if not requests:
             logger.warning("No requests found")
@@ -182,41 +190,97 @@ class MCPAgent:
     async def process_request(self, request_id: str) -> Decision:
         """
         Standard decision flow:
-          1) validate_preset
-          2) plan_steps
-          3) assign_artist
-          4) synthesize decision (status, rationale, customer messaging)
-          5) record_decision
+          1) read artists/presets/rules (for trace + observability)
+          2) validate_preset
+          3) plan_steps
+          4) assign_artist
+          5) synthesize decision (status, rationale, customer messaging)
+          6) record_decision
         """
         start_time = datetime.now()
         trace: List[Dict[str, Any]] = []
 
-        # Read the request from resource
+        # 1) Read resources to show in trace and mcp.log
+        artists = await self.read_resource("resource://artists")
+        presets = await self.read_resource("resource://presets")
+        rules = await self.read_resource("resource://rules")
+        trace.extend(
+            [
+                {
+                    "step": "read_resource",
+                    "result": {"uri": "resource://artists", "count": len(artists)},
+                    "timestamp": datetime.now().isoformat(),
+                },
+                {
+                    "step": "read_resource",
+                    "result": {
+                        "uri": "resource://presets",
+                        "count": (
+                            len(presets)
+                            if isinstance(presets, list)
+                            else len(presets.keys())
+                        ),
+                    },
+                    "timestamp": datetime.now().isoformat(),
+                },
+                {
+                    "step": "read_resource",
+                    "result": {"uri": "resource://rules", "count": len(rules)},
+                    "timestamp": datetime.now().isoformat(),
+                },
+            ]
+        )
+
+        # Pull the specific request
         requests = await self.read_resource("resource://requests")
         request = next((r for r in requests if r["id"] == request_id), None)
         if not request:
             raise ValueError(f"Request {request_id} not found")
 
-        # 1) Validate preset
+        # 2) Validate preset
         validation_result = await self.call_tool(
             "validate_preset",
             {"request_id": request_id, "account_id": request["account"]},
         )
-        trace.append({"step": "validate_preset", "result": validation_result, "timestamp": datetime.now().isoformat()})
+        trace.append(
+            {
+                "step": "validate_preset",
+                "result": validation_result,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
-        # 2) Plan steps
+        # 3) Plan steps
         plan_result = await self.call_tool("plan_steps", {"request_id": request_id})
-        trace.append({"step": "plan_steps", "result": plan_result, "timestamp": datetime.now().isoformat()})
+        trace.append(
+            {
+                "step": "plan_steps",
+                "result": plan_result,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
-        # 3) Assign artist
-        assignment_result = await self.call_tool("assign_artist", {"request_id": request_id})
-        trace.append({"step": "assign_artist", "result": assignment_result, "timestamp": datetime.now().isoformat()})
+        # 4) Assign artist
+        assignment_result = await self.call_tool(
+            "assign_artist", {"request_id": request_id}
+        )
+        trace.append(
+            {
+                "step": "assign_artist",
+                "result": assignment_result,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
-        # 4) Determine status + messages
+        # 5) Determine status + messages
         if not validation_result.get("ok", False):
             status = "validation_failed"
-            customer_message = self._customer_message_from_validation(validation_result, request["account"])
-            clarifying_question = self._clarifying_question_from_validation(validation_result)
+            customer_message = self._customer_message_from_validation(
+                validation_result, request["account"]
+            )
+            clarifying_question = self._clarifying_question_from_validation(
+                validation_result
+            )
         elif not assignment_result.get("artist_id"):
             status = "assignment_failed"
             customer_message = "Your request is queued and will be assigned soon."
@@ -227,7 +291,9 @@ class MCPAgent:
             clarifying_question = None
 
         # Rationale is always plain, natural-language text (no LLM required)
-        rationale = self._rationale_from_parts(request, validation_result, plan_result, assignment_result, status)
+        rationale = self._rationale_from_parts(
+            request, validation_result, plan_result, assignment_result, status
+        )
 
         decision = Decision(
             request_id=request_id,
@@ -241,19 +307,25 @@ class MCPAgent:
             assignment=assignment_result,
             trace=trace,
             metrics={
-                "processing_time_ms": int((datetime.now() - start_time).total_seconds() * 1000),
+                "processing_time_ms": int(
+                    (datetime.now() - start_time).total_seconds() * 1000
+                ),
                 "agent_type": self.__class__.__name__,
             },
             timestamp=datetime.now().isoformat(),
         )
 
-        # 5) Record decision
-        await self.call_tool("record_decision", {"request_id": request_id, "decision": asdict(decision)})
+        # 6) Record decision
+        await self.call_tool(
+            "record_decision", {"request_id": request_id, "decision": asdict(decision)}
+        )
 
         return decision
 
     # ---------- helpers ----------
-    def _rationale_from_parts(self, request, validation, plan, assignment, status) -> str:
+    def _rationale_from_parts(
+        self, request, validation, plan, assignment, status
+    ) -> str:
         if status == "success":
             return (
                 f"Request {request['id']} from {request['account']} processed successfully. "
@@ -272,7 +344,9 @@ class MCPAgent:
                 f"{assignment.get('reason', 'No available artists')}."
             )
 
-    def _customer_message_from_validation(self, validation: Dict[str, Any], account: str) -> str:
+    def _customer_message_from_validation(
+        self, validation: Dict[str, Any], account: str
+    ) -> str:
         errors = validation.get("errors", [])
         joined = " ".join(errors).lower()
         if "texture channel" in joined or "missing texture channels" in joined:
@@ -315,10 +389,14 @@ class LLMEnhancedMCPAgent(MCPAgent):
 
         if HAS_OPENAI and self.api_key:
             if self.base_url:
-                self.llm_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+                self.llm_client = AsyncOpenAI(
+                    api_key=self.api_key, base_url=self.base_url
+                )
             else:
                 self.llm_client = AsyncOpenAI(api_key=self.api_key)
-            logger.info(f"LLM wired: model={self.model} | key_set=True | base_url={self.base_url or 'default'}")
+            logger.info(
+                f"LLM wired: model={self.model} | key_set=True | base_url={self.base_url or 'default'}"
+            )
         else:
             self.llm_client = None
             logger.info("LLM disabled (missing openai package or OPENAI_API_KEY).")
@@ -332,8 +410,14 @@ class LLMEnhancedMCPAgent(MCPAgent):
                 resp = await self.llm_client.chat.completions.create(
                     model=self.model,
                     messages=[
-                        {"role": "system", "content": "You help explain 3D asset processing decisions to customers clearly and kindly."},
-                        {"role": "user", "content": f"Explain this validation failure in a clear and concise way:\n{json.dumps(decision.validation_result, indent=2)}"},
+                        {
+                            "role": "system",
+                            "content": "You help explain 3D asset processing decisions to customers clearly and kindly.",
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Explain this validation failure in a clear and concise way:\n{json.dumps(decision.validation_result, indent=2)}",
+                        },
                     ],
                     temperature=0.7,
                     max_tokens=200,
@@ -347,7 +431,9 @@ class LLMEnhancedMCPAgent(MCPAgent):
                     decision.metrics["tokens_used"] = usage.total_tokens
 
                 # Optional: log the refined message for visibility
-                logger.info(f"\n--- LLM customer_message for {decision.request_id} ---\n{enhanced}\n--- end ---\n")
+                logger.info(
+                    f"\n--- LLM customer_message for {decision.request_id} ---\n{enhanced}\n--- end ---\n"
+                )
 
             except Exception as e:
                 logger.warning(f"LLM enhancement failed: {e}")
@@ -369,7 +455,11 @@ async def main():
     parser.add_argument("--server", default="mcp_server.py")
     parser.add_argument("--agent-type", choices=["mcp", "llm"], default="mcp")
     parser.add_argument("--output", type=Path, default=Path("decisions.json"))
-    parser.add_argument("--python-bin", default=None, help="Optional path to Python used to spawn the MCP server")
+    parser.add_argument(
+        "--python-bin",
+        default=None,
+        help="Optional path to Python used to spawn the MCP server",
+    )
 
     args = parser.parse_args()
 
@@ -377,9 +467,13 @@ async def main():
     data_dir = Path(args.requests).parent
 
     if args.agent_type == "mcp":
-        agent = MCPAgent(server_script=args.server, data_dir=data_dir, python_bin=args.python_bin)
+        agent = MCPAgent(
+            server_script=args.server, data_dir=data_dir, python_bin=args.python_bin
+        )
     else:
-        agent = LLMEnhancedMCPAgent(server_script=args.server, data_dir=data_dir, python_bin=args.python_bin)
+        agent = LLMEnhancedMCPAgent(
+            server_script=args.server, data_dir=data_dir, python_bin=args.python_bin
+        )
 
     await agent.connect()
     decisions = await agent.process_all_requests()

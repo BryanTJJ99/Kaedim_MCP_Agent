@@ -15,16 +15,41 @@ This MCP system automates that entire process, making intelligent decisions whil
 
 ## 🏗 Architecture
 
+The system demonstrates **two MCP deployment patterns** to showcase different use cases:
+
+### **Pattern 1: Stdio-Based MCP (Development & Single-Client)**
+
 ```
 ┌─────────────────────┐    MCP Protocol     ┌─────────────────────┐
 │                     │    (stdio)          │                     │
 │   MCP Client        │◄──────────────────► │   MCP Server        │
-│   (Agent)           │                     │   (Tools/Resources) │
+│   (run_agent.py)    │                     │   (mcp_server.py)   │
 │                     │                     │                     │
 │ - Process requests  │                     │ - validate_preset   │
-│ - Generate decisions│                     │ - plan_steps        │
-│ - Customer messages │                     │ - assign_artist     │
-│ - Audit trails      │                     │ - record_decision   │
+│ - Launch server     │                     │ - plan_steps        │
+│ - Generate decisions│                     │ - assign_artist     │
+│ - Customer messages │                     │ - record_decision   │
+└─────────────────────┘                     └─────────────────────┘
+         │                                           ▲
+         └─── Spawns as child process ──────────────┘
+```
+
+### **Pattern 2: HTTP-Based MCP (Production & Multi-Client)**
+
+```
+┌─────────────────────┐    HTTP/JSON-RPC    ┌─────────────────────┐
+│   MCP Client A      │◄──────────────────► │                     │
+│ (run_agent_http.py) │                     │   Long-Lived        │
+└─────────────────────┘                     │   MCP Server        │
+                                            │ (mcp_server_http.py)│
+┌─────────────────────┐    HTTP/JSON-RPC    │                     │
+│   MCP Client B      │◄──────────────────► │ - validate_preset   │
+│ (run_agent_http.py) │                     │ - plan_steps        │
+└─────────────────────┘                     │ - assign_artist     │
+                                            │ - record_decision   │
+┌─────────────────────┐    HTTP/JSON-RPC    │ - Shared state      │
+│   MCP Client C      │◄──────────────────► │ - Concurrent access │
+│       ...           │                     │                     │
 └─────────────────────┘                     └─────────────────────┘
 ```
 
@@ -488,23 +513,69 @@ data/
 
 ## 🚀 Usage
 
-### **Basic Processing**
+The system provides **two deployment modes** to demonstrate different MCP communication patterns:
+
+### **1. Stdio-Based MCP (Default - Recommended for Development)**
+
+In this mode, the client (`run_agent.py`) launches the MCP server as a child process and communicates over stdio. This is simpler for development and sufficient for single-client scenarios.
 
 ```bash
-# Process all requests with individual file arguments
-python run_agent.py --requests data/requests.json --artists data/artists.json --presets data/presets.json --rules data/rules.json
+# Basic processing - stdio communication
+python3 run_agent.py \
+  --requests data/requests.json \
+  --artists  data/artists.json \
+  --presets  data/presets.json \
+  --rules    data/rules.json
+
+# With LLM enhancement
+python3 run_agent.py \
+  --requests data/requests.json \
+  --artists  data/artists.json \
+  --presets  data/presets.json \
+  --rules    data/rules.json \
+  --agent-type llm
 
 # Specify custom output file
-python run_agent.py --requests data/requests.json --artists data/artists.json --presets data/presets.json --rules data/rules.json --output my_decisions.json
+python3 run_agent.py \
+  --requests data/requests.json \
+  --artists  data/artists.json \
+  --presets  data/presets.json \
+  --rules    data/rules.json \
+  --output my_decisions.json
 ```
 
-### **With LLM Enhancement** (optional)
+**Architecture**: Client launches server as child process → stdio communication → server terminates with client
+
+### **2. HTTP-Based MCP (Production-Ready)**
+
+For production scenarios with multiple clients or long-lived servers, use the HTTP-based implementation that provides persistent server instances and concurrent client access.
 
 ```bash
-# Enable OpenAI integration for enhanced explanations
-export OPENAI_API_KEY=your_key_here
-python run_agent.py --requests data/requests.json --artists data/artists.json --presets data/presets.json --rules data/rules.json --use-llm
+# Terminal 1: Start the HTTP MCP server
+uvicorn mcp_server_http:app --host 127.0.0.1 --port 8765
+
+# Terminal 2: Run the HTTP client
+python3 run_agent_http.py \
+  --requests data/requests.json \
+  --artists  data/artists.json \
+  --presets  data/presets.json \
+  --rules    data/rules.json \
+  --server-url http://127.0.0.1:8765 \
+  --agent-type llm
 ```
+
+**Architecture**: Persistent server instance → HTTP API communication → multiple clients can connect
+
+### **When to Use Each Mode**
+
+| **Stdio-Based (`run_agent.py` + `mcp_server.py`)** | **HTTP-Based (`run_agent_http.py` + `mcp_server_http.py`)** |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| ✅ Single client scenarios                         | ✅ Multiple concurrent clients                              |
+| ✅ Development and testing                         | ✅ Production deployments                                   |
+| ✅ Simpler setup (no server management)            | ✅ Server monitoring and health checks                      |
+| ✅ Process isolation and cleanup                   | ✅ Horizontal scaling capabilities                          |
+| ❌ No shared state across runs                     | ✅ Persistent server state                                  |
+| ❌ Not suitable for high-concurrency               | ✅ Better resource utilization                              |
 
 ### **Output Files**
 
@@ -644,13 +715,30 @@ python test_mcp.py
 
 ## 🔍 MCP Protocol Details
 
-This implementation follows the [Model Context Protocol](https://modelcontextprotocol.io/) specification:
+This implementation follows the [Model Context Protocol](https://modelcontextprotocol.io/) specification with **two communication patterns**:
+
+### **Stdio-Based MCP (Default)**
 
 - **Server** exposes tools and resources via stdio communication
-- **Client** connects and calls tools through structured JSON-RPC
+- **Client** connects and calls tools through structured JSON-RPC over stdin/stdout
+- **Process Management**: Client launches server as child process
+- **Lifecycle**: Server terminates when client finishes
+- **Use Case**: Development, testing, single-client scenarios
+
+### **HTTP-Based MCP (Production)**
+
+- **Server** runs as persistent FastAPI application
+- **Client** connects via HTTP endpoints using JSON-RPC protocol
+- **Concurrency**: Multiple clients can connect simultaneously
+- **State Management**: Server maintains persistent state across client sessions
+- **Use Case**: Production deployments, multi-client access, monitoring
+
+### **Common Features (Both Patterns)**
+
 - **Type Safety** with JSON Schema validation for all tool inputs
 - **Resource Access** for read-only data via URI-based resources
 - **Event Streaming** for observability and debugging
+- **Error Handling** with structured error responses
 
 ## 🎯 Key Features Demonstrated
 
@@ -667,8 +755,10 @@ This implementation follows the [Model Context Protocol](https://modelcontextpro
 
 ```
 Kaedim_MCP_Agent/
-├── run_agent.py              # MCP client (main agent)
-├── mcp_server.py             # MCP server (tools/resources)
+├── run_agent.py              # MCP client (stdio-based)
+├── run_agent_http.py         # MCP client (HTTP-based)
+├── mcp_server.py             # MCP server (stdio-based)
+├── mcp_server_http.py        # MCP server (HTTP-based)
 ├── test_basic.py             # Basic functionality tests
 ├── test_mcp.py               # MCP connection tests
 ├── requirements.txt          # Dependencies
@@ -680,6 +770,48 @@ Kaedim_MCP_Agent/
 ├── decisions.json            # Output decisions (generated)
 └── mcp.log                   # Event/tool logs (generated)
 ```
+
+### **MCP Communication Patterns**
+
+#### **Stdio-Based Pattern (`mcp_server.py` + `run_agent.py`)**
+
+```python
+# Client launches server as child process
+process = subprocess.Popen([
+    "python", "-u", "mcp_server.py", "data"
+], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+# Communicates via JSON-RPC over stdin/stdout
+client = mcp.Client((process.stdin, process.stdout))
+```
+
+**Characteristics**:
+
+- 🔄 Server lifecycle tied to client
+- 📦 Process isolation for each run
+- 🚀 Simple for development and testing
+- ⚠️ **Limitation**: Single client per server instance
+
+#### **HTTP-Based Pattern (`mcp_server_http.py` + `run_agent_http.py`)**
+
+```python
+# Server runs independently as FastAPI application
+# Client connects via HTTP requests
+
+# In production, multiple clients can connect:
+# Client A → HTTP → Long-lived MCP Server ← HTTP ← Client B
+#                        ↕
+#                   Shared Tools & Resources
+```
+
+**Characteristics**:
+
+- 🌐 Long-lived server instances
+- 🔄 Multiple concurrent clients
+- 📊 Better for production monitoring
+- 🎯 **Production Ready**: Supports horizontal scaling
+
+> **💡 Design Decision**: The stdio approach is sufficient for this demonstration since we don't need a long-lived server shared across multiple clients. However, in actual production scenarios with multi-client access, you'd want the HTTP-based MCP server to be long-lived, because multiple clients all want to hit the same tools and shared state.
 
 ### **Adding New Tools**
 
