@@ -1,0 +1,6 @@
+[
+  {"if":{"account":"ArcadiaXR","style":"stylized_hard_surface"},"then":{"steps":["style_tweak_review"]}},
+  {"if":{"priority":"priority"},"then":{"sla_hours":24,"queue":"expedite"}},
+  {"if":{"engine":"Unreal"},"then":{"steps":["export_unreal_glb"]}},
+  {"if":{"topology":"quad_only"},"then":{"steps":["validate_topology_quad_only"]}}
+]

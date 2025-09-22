@@ -1,0 +1,5 @@
+[
+  {"id":"req-001","account":"ArcadiaXR","style":"stylized_hard_surface","engine":"Unreal","priority":"standard","due_at":"2025-07-01T17:00:00Z"},
+  {"id":"req-002","account":"TitanMfg","style":"realistic_pbr","engine":"Unreal","priority":"priority","topology":"quad_only"},
+  {"id":"req-003","account":"BlueNova","style":"lowpoly_flat","engine":"Unity","priority":"standard"}
+]

@@ -1,0 +1,4 @@
+{
+  "ArcadiaXR": {"version":3,"naming":{"pattern":"AXR_{asset}_{lod}"},"packing":{"r":"ao","g":"metallic","b":"roughness","a":"emissive"}},
+  "TitanMfg": {"version":1,"naming":{"pattern":"TMG-{category}-{asset}"},"packing":{"r":"ao","g":"metallic","b":"roughness"}}
+}

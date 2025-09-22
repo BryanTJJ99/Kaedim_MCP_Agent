@@ -1,0 +1,5 @@
+[
+  {"id":"a-1","name":"Ada","skills":["stylized_hard_surface","pbr","unity"],"capacity_concurrent":2,"active_load":2},
+  {"id":"a-2","name":"Ben","skills":["pbr","unreal","quad_only"],"capacity_concurrent":1,"active_load":0},
+  {"id":"a-3","name":"Cleo","skills":["lowpoly_flat","unity"],"capacity_concurrent":2,"active_load":1}
+]
