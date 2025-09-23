@@ -190,7 +190,31 @@ class MCPAgent:
         )
         trace.append({"step": "validate_preset", "result": validation_result, "timestamp": datetime.now().isoformat()})
 
-        # 2) Plan steps (always plan; rules may still be useful for messaging)
+        # If validation fails, STOP immediately and return a customer-safe message + clarifying question
+        if not validation_result.get("ok", False):
+            status = "validation_failed"
+            customer_message = self._customer_message_from_validation(validation_result, request["account"])
+            clarifying_question = self._clarifying_question_from_validation(validation_result)
+            rationale = f"Validation failed: {', '.join(validation_result.get('errors', [])) or 'unknown error'}"
+
+            decision = Decision(
+                request_id=request_id,
+                decision_id=f"mcp-{request_id}-{int(datetime.now().timestamp())}",
+                status=status,
+                rationale=rationale,
+                customer_message=customer_message,
+                clarifying_question=clarifying_question,
+                validation_result=validation_result,
+                plan={},
+                assignment={},
+                trace=trace,
+                metrics={"processing_time_ms": 0, "agent_type": "MCPAgent"},
+                timestamp=datetime.now().isoformat(),
+            )
+            await self.call_tool("record_decision", {"request_id": request_id, "decision": asdict(decision)})
+            return decision
+
+        # 2) Plan steps (only after validation passes)
         plan_result = await self.call_tool("plan_steps", {"request_id": request_id})
         trace.append({"step": "plan_steps", "result": plan_result, "timestamp": datetime.now().isoformat()})
 
@@ -251,8 +275,14 @@ class MCPAgent:
     def _clarifying_question_from_validation(self, validation: Dict[str, Any]) -> Optional[str]:
         if validation.get("ok"):
             return None
-        if any("Missing texture channels" in s for s in validation.get("errors", [])):
-            return "Would you like us to apply default channel mappings now, or wait for your preset update?"
+        errors = validation.get("errors", []) or []
+        # Specific phrasing when 'a' channel is missing
+        for e in errors:
+            if "Missing texture channels" in e and (" a" in e or e.endswith(": a")):
+                return "Your preset is missing the 'a' channel—should we default it to emissive or block this batch until you update the preset?"
+        # Generic clarifier for other packing issues
+        if any("Missing texture channels" in s for s in errors):
+            return "Your texture packing is missing one or more channels—should we apply default mappings or wait for your preset update?"
         return "Would you like help updating your preset?"
 
     def _rationale_from_parts(
@@ -311,7 +341,7 @@ class LLMEnhancedMCPAgent(MCPAgent):
 
     # ----- pretty console helpers -----
     def _react_banner(self, request_id: str):
-        logger.info("\n" + "#"*70 + f"\n### LLM ReAct for {request_id} — REASON • ACT • OBSERVE\n" + "#"*70)
+        logger.info("\n\n" + "#"*70 + f"\n\n### LLM ReAct for {request_id} — REASON • ACT • OBSERVE\n\n" + "#"*70 + "\n\n")
 
     def _print_block(self, title: str, payload: Dict[str, Any] | str):
         try:
@@ -360,7 +390,7 @@ class LLMEnhancedMCPAgent(MCPAgent):
                 observations=observations,
             )
 
-            logger.info("\n" + "#"*26 + f" REACT STEP {step} " + "#"*26)
+            logger.info("\n\n" + "#"*26 + f" REACT STEP {step} " + "#"*26 + "\n\n")
             self._print_block("DECIDE", action)
 
             action_name = (action or {}).get("action")
@@ -389,6 +419,16 @@ class LLMEnhancedMCPAgent(MCPAgent):
                 observations.append({"action": action_name, "args": {"request_id": request_id}, "observation": validation_result})
                 trace.append({"step": "validate_preset", "result": validation_result, "timestamp": datetime.now().isoformat()})
                 logger.info("#"*66)
+
+                # EARLY STOP on validation failure with customer-safe messaging
+                if validation_result.get("ok") is not True:
+                    status = "validation_failed"
+                    customer_message = self._customer_message_from_validation(validation_result, request["account"]) or customer_message
+                    clarifying_question = self._clarifying_question_from_validation(validation_result) or clarifying_question
+                    rationale = f"Validation failed: {', '.join(validation_result.get('errors', [])) or 'unknown error'}"
+                    logger.info("" + "#"*70 + f"### EARLY EXIT — validation_failed for {request_id}" + "#"*70)
+                    break
+
                 continue
 
             if action_name == "plan_steps":
@@ -446,7 +486,7 @@ class LLMEnhancedMCPAgent(MCPAgent):
             status = "success"
 
         # Final outcome banner
-        logger.info("\n" + "#"*70 + f"\n### FINISH — status={status} | steps={step}\n" + "#"*70)
+        logger.info("\n\n" + "#"*70 + f"\n\n### FINISH — status={status} | steps={step}\n\n" + "#"*70 + "\n\n" )
 
         rationale = rationale or self._rationale_from_parts(request, validation_result, plan_result, assignment_result, status)
 
