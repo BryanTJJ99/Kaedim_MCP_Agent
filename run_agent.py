@@ -258,32 +258,144 @@ class MCPAgent:
         return decision
 
     # ---------- utilities ----------
+    def _parse_validation_errors(self, validation: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize validator errors into a small taxonomy we can message on.
+        Returns keys like: {missing_channels:["a"], no_packing:True, version_missing:True, engine_missing:True, engine_unsupported:"CryEngine", unsupported_maps:["specular"], topology_quad_only:True, uv_missing:True, uv_overlap:True, size_exceeds:True, polycount_exceeds:True}
+        """
+        errs = [str(e) for e in (validation or {}).get("errors", [])]
+        info: Dict[str, Any] = {
+            "missing_channels": [],
+            "no_packing": False,
+            "version_missing": False,
+            "engine_missing": False,
+            "engine_unsupported": None,
+            "unsupported_maps": [],
+            "map_conflicts": [],
+            "topology_quad_only": False,
+            "uv_missing": False,
+            "uv_overlap": False,
+            "size_exceeds": False,
+            "polycount_exceeds": False,
+        }
+        for e in errs:
+            low = e.lower()
+            # Missing channels
+            if "missing texture channels" in low:
+                parts = e.split(":", 1)
+                if len(parts) == 2:
+                    chans = [c.strip().lower() for c in parts[1].replace(",", " ").split()]
+                    info["missing_channels"] = [c for c in chans if c in {"r","g","b","a"}]
+                else:
+                    info["missing_channels"] = ["r","g","b","a"]
+            # No packing / version
+            if "no texture packing configuration" in low:
+                info["no_packing"] = True
+            if "preset version not specified" in low or ("version" in low and "not" in low and "specified" in low):
+                info["version_missing"] = True
+            # Engine issues
+            if "engine not specified" in low or "missing engine" in low:
+                info["engine_missing"] = True
+            if "unsupported engine" in low or "engine not supported" in low:
+                # try to capture engine name
+                parts = e.split(":", 1)
+                if len(parts) == 2:
+                    info["engine_unsupported"] = parts[1].strip()
+                else:
+                    info["engine_unsupported"] = True
+            # Unsupported or conflicting maps
+            if "unsupported map" in low or "unsupported texture" in low:
+                # e.g., "Unsupported map: specular"
+                parts = e.split(":", 1)
+                if len(parts) == 2:
+                    info["unsupported_maps"].append(parts[1].strip())
+            if "conflicting maps" in low or "map conflict" in low:
+                info["map_conflicts"].append(e)
+            # Topology
+            if "quad only" in low or "quad-only" in low:
+                info["topology_quad_only"] = True
+            # UVs
+            if "missing uvs" in low or "uvs not found" in low:
+                info["uv_missing"] = True
+            if "uv overlap" in low or "overlapping uvs" in low:
+                info["uv_overlap"] = True
+            # Size / polycount limits
+            if "exceeds max texture size" in low or "texture too large" in low:
+                info["size_exceeds"] = True
+            if "exceeds polycount" in low or "polycount too high" in low:
+                info["polycount_exceeds"] = True
+        return info
+
     def _customer_message_from_validation(self, validation: Dict[str, Any], account: str) -> str:
         if validation.get("ok"):
             return ""
+        info = self._parse_validation_errors(validation)
         errs = validation.get("errors") or []
-        if not errs:
-            return f"Validation failed for {account}. Please review your preset."
-        # Simple humanization
-        e = "; ".join(errs)
-        if "Missing texture channels" in e:
-            return f"Configuration issue for {account}: Your texture packing appears incomplete. Please configure all RGBA channels so we can generate engine-ready textures."
-        if "No texture packing configuration found" in e:
-            return "Validation error: No texture packing configuration found"
-        return f"Validation error: {e}"
+
+        # Priority messaging
+        if info.get("no_packing") and info.get("version_missing"):
+            return "Validation error: No texture packing configuration found and no preset version specified. Please add a packing map (e.g., RGBA layout) and set a preset version."
+        if info.get("no_packing"):
+            return "Validation error: No texture packing configuration found. Please provide how channels should be packed (e.g., R: AO, G: Roughness, B: Metallic, A: Emissive)."
+        if info.get("missing_channels"):
+            missing = ", ".join(info["missing_channels"]).upper()
+            return f"Your texture packing is missing channel(s): {missing}. Please include those channels or confirm a default mapping so we can export engine-ready textures."
+        if info.get("unsupported_maps"):
+            maps_str = ", ".join(info["unsupported_maps"]) if info["unsupported_maps"] else "one or more maps"
+            return f"One or more requested texture maps are not supported ({maps_str}). Please remove them or choose supported equivalents."
+        if info.get("map_conflicts"):
+            return "There are conflicting map assignments in your preset. Please resolve duplicate or overlapping map targets before we proceed."
+        if info.get("engine_missing"):
+            return "Target engine is not specified. Please select an engine so we can apply the correct export and validation rules."
+        if info.get("engine_unsupported"):
+            eng = info.get("engine_unsupported")
+            extra = f" ({eng})" if isinstance(eng, str) else ""
+            return f"The selected engine is not supported{extra}. Please choose a supported engine (e.g., Unreal or Unity)."
+        if info.get("topology_quad_only"):
+            return "The preset enforces quad-only topology, but the model doesn't meet this requirement. Please provide a quad-only mesh or relax the topology rule."
+        if info.get("uv_missing"):
+            return "The model is missing UVs. Please include UVs or allow us to auto-unwrap before texturing."
+        if info.get("uv_overlap"):
+            return "The model has overlapping UVs beyond allowed thresholds. Please fix the UVs or permit us to auto-fix with packing."
+        if info.get("size_exceeds"):
+            return "One or more textures exceed the maximum supported size. Please reduce texture dimensions or approve downscaling."
+        if info.get("polycount_exceeds"):
+            return "The mesh exceeds the permitted polycount. Please provide a lower-poly version or allow us to decimate to target."
+
+        # Fallback: join raw errors (safe)
+        return "Validation error: " + "; ".join(str(e) for e in errs)
 
     def _clarifying_question_from_validation(self, validation: Dict[str, Any]) -> Optional[str]:
         if validation.get("ok"):
             return None
-        errors = validation.get("errors", []) or []
-        # Specific phrasing when 'a' channel is missing
-        for e in errors:
-            if "Missing texture channels" in e and (" a" in e or e.endswith(": a")):
-                return "Your preset is missing the 'a' channel—should we default it to emissive or block this batch until you update the preset?"
-        # Generic clarifier for other packing issues
-        if any("Missing texture channels" in s for s in errors):
-            return "Your texture packing is missing one or more channels—should we apply default mappings or wait for your preset update?"
-        return "Would you like help updating your preset?"
+        info = self._parse_validation_errors(validation)
+
+        if info.get("missing_channels"):
+            missing = ", ".join(info["missing_channels"]).upper()
+            return f"We detected missing channel(s) {missing}. Should we apply a default mapping (e.g., map A to emissive) or would you prefer to update your preset first?"
+        if info.get("no_packing"):
+            return "Would you like us to apply a standard packing template (e.g., AO/Roughness/Metallic/Emissive) for this batch, or wait for your custom packing settings?"
+        if info.get("version_missing"):
+            return "Do you want us to assume the latest preset version, or will you specify the version you’re targeting?"
+        if info.get("unsupported_maps"):
+            return "Should we drop the unsupported maps or substitute with supported equivalents (e.g., use ORM instead of separate roughness/metallic)?"
+        if info.get("map_conflicts"):
+            return "Would you like us to auto-resolve the conflicting map assignments using a recommended template, or will you correct the preset?"
+        if info.get("engine_missing"):
+            return "Which engine should we target for export and validation (e.g., Unreal or Unity)?"
+        if info.get("engine_unsupported"):
+            return "Would you like to switch to a supported engine (e.g., Unreal or Unity), or should we stop this batch?"
+        if info.get("topology_quad_only"):
+            return "Should we enforce quad-only by retopologizing automatically, or wait for you to provide a quad-only mesh?"
+        if info.get("uv_missing"):
+            return "Do you want us to auto-unwrap UVs, or will you provide a mesh with UVs?"
+        if info.get("uv_overlap"):
+            return "Should we auto-fix overlapping UVs (may adjust pack/scale), or do you prefer to fix them on your side?"
+        if info.get("size_exceeds"):
+            return "Is it okay if we downscale oversized textures to the nearest supported resolution, or would you like to upload smaller maps?"
+        if info.get("polycount_exceeds"):
+            return "Do you want us to decimate the mesh to the target polycount, or will you provide a lighter model?"
+
+        return "Would you like us to apply sensible defaults now, or wait for your preset update?"
 
     def _rationale_from_parts(
         self,
@@ -348,7 +460,7 @@ class LLMEnhancedMCPAgent(MCPAgent):
             text = json.dumps(payload, indent=2) if isinstance(payload, dict) else str(payload)
         except Exception:
             text = str(payload)
-        logger.info(f"\n# {title}\n{text}\n")
+        logger.info(f"\n\n# {title}\n\n{text}\n\n")
 
     # ---------- ReAct loop ----------
     async def process_request(self, request: Dict[str, Any]) -> Decision:
@@ -486,7 +598,7 @@ class LLMEnhancedMCPAgent(MCPAgent):
             status = "success"
 
         # Final outcome banner
-        logger.info("\n\n" + "#"*70 + f"\n\n### FINISH — status={status} | steps={step}\n\n" + "#"*70 + "\n\n" )
+        logger.info("\n\n" + "#"*70 + f"\n\n### FINISH — status={status} | steps={step}\n\n" + "#"*70 + "\n\n")
 
         rationale = rationale or self._rationale_from_parts(request, validation_result, plan_result, assignment_result, status)
 

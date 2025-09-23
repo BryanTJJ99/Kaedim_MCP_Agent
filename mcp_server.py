@@ -19,8 +19,6 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 
-
-
 # ✅ Configure logging to use stderr for console output
 logging.basicConfig(
     level=logging.INFO,
@@ -254,7 +252,9 @@ class KaedimMCPServer:
                 self._emit_event("tool.failed", {"tool": name, "error": str(e)})
                 raise
 
-    async def _validate_preset(self, request_id: str, account_id: str) -> Dict[str, Any]:
+    async def _validate_preset(
+        self, request_id: str, account_id: str
+    ) -> Dict[str, Any]:
         """Validate request against customer preset"""
         request = next((r for r in self.requests if r["id"] == request_id), None)
         if not request:
