@@ -1,7 +1,5 @@
 # Kaedim MCP Agent
 
-# Kaedim MCP Agent
-
 A **Model Context Protocol (MCP)** implementation for intelligent 3D asset request processing. Automates the complete lifecycle from validation → planning → artist assignment → delivery using an event-driven, tool-based architecture.
 
 ## What This System Does
