@@ -70,10 +70,17 @@ def test_all_artists_at_capacity():
 
         # Import and test the server logic
         import sys
+        import os
 
-        sys.path.append(str(Path(__file__).parent))
+        # Get the directory of the current script, then get its parent
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+
+        # Add the parent directory to the system path
+        sys.path.append(parent_dir)
+
+        # Now you can import mcp_server as a module
         from mcp_server import KaedimMCPServer
-
         # Create server instance
         server = KaedimMCPServer(temp_path)
 

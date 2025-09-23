@@ -34,6 +34,7 @@ async def test_valid_vs_invalid_preset():
             )
             valid_result = json.loads(result1.content[0].text)
             assert valid_result["ok"] == True, "ArcadiaXR preset should be valid"
+            assert valid_result["preset_version"] == 3, "Should have correct version"
 
             # Test invalid preset (TitanMfg - missing 'a' channel)
             result2 = await session.call_tool(
@@ -41,7 +42,14 @@ async def test_valid_vs_invalid_preset():
             )
             invalid_result = json.loads(result2.content[0].text)
             assert invalid_result["ok"] == False, "TitanMfg preset should be invalid"
-            assert "Missing texture channels: a" in invalid_result["errors"]
+            assert any("Missing texture channels: a" in str(err) for err in invalid_result["errors"]), "Should mention missing 'a' channel"
+
+            # Test non-existent account
+            result3 = await session.call_tool(
+                "validate_preset", {"request_id": "req-001", "account_id": "NonExistentAccount"}
+            )
+            nonexistent_result = json.loads(result3.content[0].text)
+            assert nonexistent_result["ok"] == False, "Non-existent account should be invalid"
 
             print("✅ Preset validation tests passed")
 

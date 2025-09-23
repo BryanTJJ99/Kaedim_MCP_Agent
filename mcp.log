@@ -494,3 +494,255 @@
 2025-09-22 22:41:33,901 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T02:41:33.901603+00:00", "data": {"tool": "record_decision", "arguments": {"request_id": "req-003", "decision": {"request_id": "req-003", "decision_id": "mcp-req-003-1758595293", "status": "validation_failed", "rationale": "Validation failed: No texture packing configuration found, Preset version not specified", "customer_message": "Validation error: No texture packing configuration found and no preset version specified. Please add a packing map (e.g., RGBA layout) and set a preset version.", "clarifying_question": "Would you like us to apply a standard packing template (e.g., AO/Roughness/Metallic/Emissive) for this batch, or wait for your custom packing settings?", "validation_result": {"ok": false, "errors": ["No texture packing configuration found", "Preset version not specified"], "preset_version": null, "validation_timestamp": "2025-09-23T02:41:33.899267+00:00"}, "plan": {}, "assignment": {}, "trace": [{"step": "validate_preset", "result": {"ok": false, "errors": ["No texture packing configuration found", "Preset version not specified"], "preset_version": null, "validation_timestamp": "2025-09-23T02:41:33.899267+00:00"}, "timestamp": "2025-09-22T22:41:33.900075"}], "metrics": {"processing_time_ms": 0, "agent_type": "LLMEnhancedMCPAgent", "react_steps": 1}, "timestamp": "2025-09-22T22:41:33.900162"}}}}
 2025-09-22 22:41:33,901 - __main__ - INFO - Event: {"type": "decision.recorded", "timestamp": "2025-09-23T02:41:33.901871+00:00", "data": {"decision_id": "b72a434e-6c9c-4ef1-b1d2-c330dda6da38", "request_id": "req-003", "status": "validation_failed"}}
 2025-09-22 22:41:33,901 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T02:41:33.901943+00:00", "data": {"tool": "record_decision", "duration_ms": 0, "success": true}}
+2025-09-22 22:54:38,887 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 22:54:38,891 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 22:54:38,894 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 22:54:38,895 - mcp.server.lowlevel.server - INFO - Processing request of type ListResourcesRequest
+2025-09-22 22:54:38,896 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 22:54:38,896 - __main__ - INFO - Reading resource: resource://requests
+2025-09-22 22:54:38,896 - __main__ - INFO - Successfully returning data for resource://requests
+2025-09-22 22:54:38,897 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 22:54:38,897 - __main__ - INFO - Reading resource: resource://artists
+2025-09-22 22:54:38,897 - __main__ - INFO - Successfully returning data for resource://artists
+2025-09-22 22:54:38,898 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 22:54:38,898 - __main__ - INFO - Reading resource: resource://presets
+2025-09-22 22:54:38,898 - __main__ - INFO - Successfully returning data for resource://presets
+2025-09-22 22:54:38,899 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 22:54:38,899 - __main__ - INFO - Reading resource: resource://rules
+2025-09-22 22:54:38,899 - __main__ - INFO - Successfully returning data for resource://rules
+2025-09-22 22:54:48,060 - mcp_server - INFO - Starting Kaedim MCP Server...
+2025-09-22 22:59:43,808 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 22:59:43,812 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 22:59:43,815 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 22:59:43,816 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T02:59:43.816138+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 22:59:43,816 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T02:59:43.816369+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 22:59:43,817 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 22:59:43,818 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 22:59:43,819 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T02:59:43.819389+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-002", "account_id": "TitanMfg"}}}
+2025-09-22 22:59:43,819 - __main__ - INFO - Event: {"type": "validation.failed", "timestamp": "2025-09-23T02:59:43.819452+00:00", "data": {"request_id": "req-002", "account_id": "TitanMfg", "error": "invalid_texture_packing", "missing_channels": ["a"]}}
+2025-09-22 22:59:43,819 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T02:59:43.819491+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 22:59:44,100 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 22:59:44,103 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 22:59:44,105 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 22:59:44,106 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T02:59:44.106792+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-003"}}}
+2025-09-22 22:59:44,106 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T02:59:44.106890+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 22:59:44,108 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 22:59:44,429 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 22:59:44,432 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 22:59:44,434 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 22:59:44,435 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T02:59:44.435593+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 22:59:44,435 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T02:59:44.435752+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 22:59:44,436 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 22:59:44,437 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 22:59:44,438 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T02:59:44.438090+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 22:59:44,438 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T02:59:44.438146+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:00:55,797 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:00:55,801 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:00:55,804 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:00:55,805 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:00:55.805686+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:00:55,805 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:00:55.805767+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:00:55,806 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:00:55,807 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:00:55,808 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:00:55.808255+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-002", "account_id": "TitanMfg"}}}
+2025-09-22 23:00:55,808 - __main__ - INFO - Event: {"type": "validation.failed", "timestamp": "2025-09-23T03:00:55.808308+00:00", "data": {"request_id": "req-002", "account_id": "TitanMfg", "error": "invalid_texture_packing", "missing_channels": ["a"]}}
+2025-09-22 23:00:55,808 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:00:55.808342+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:00:55,809 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:00:55,809 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:00:55.809581+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "NonExistentAccount"}}}
+2025-09-22 23:00:55,809 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:00:55.809628+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:00:56,082 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:00:56,085 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:00:56,088 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:00:56,089 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:00:56.089217+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-003"}}}
+2025-09-22 23:00:56,089 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:00:56.089319+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:00:56,090 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:00:56,366 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:00:56,368 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:00:56,370 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:00:56,371 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:00:56.371863+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:00:56,371 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:00:56.371933+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:00:56,372 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:00:56,373 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:00:56,374 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:00:56.374112+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:00:56,374 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:00:56.374170+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:29,294 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:29,297 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:29,301 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:29,302 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:29.302406+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:01:29,302 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:29.302490+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:29,304 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:29,305 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:29,305 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:29.305831+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-002", "account_id": "TitanMfg"}}}
+2025-09-22 23:01:29,305 - __main__ - INFO - Event: {"type": "validation.failed", "timestamp": "2025-09-23T03:01:29.305888+00:00", "data": {"request_id": "req-002", "account_id": "TitanMfg", "error": "invalid_texture_packing", "missing_channels": ["a"]}}
+2025-09-22 23:01:29,305 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:29.305933+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:29,306 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:29,307 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:29.307339+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "NonExistentAccount"}}}
+2025-09-22 23:01:29,307 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:29.307402+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:29,585 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:29,589 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:29,592 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:29,592 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:29.592904+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-003"}}}
+2025-09-22 23:01:29,593 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:29.592994+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:29,593 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:29,874 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:29,876 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:29,879 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:29,879 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:29.879975+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:01:29,880 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:29.880059+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:29,881 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:29,882 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:29,882 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:29.882776+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:01:29,882 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:29.882840+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,504 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:30,507 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:30,509 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,510 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.510750+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "NonExistentAccount"}}}
+2025-09-22 23:01:30,510 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.510820+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,511 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:30,512 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,513 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.513172+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-002", "account_id": "TitanMfg"}}}
+2025-09-22 23:01:30,513 - __main__ - INFO - Event: {"type": "validation.failed", "timestamp": "2025-09-23T03:01:30.513223+00:00", "data": {"request_id": "req-002", "account_id": "TitanMfg", "error": "invalid_texture_packing", "missing_channels": ["a"]}}
+2025-09-22 23:01:30,513 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.513260+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,514 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,514 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.514501+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:01:30,514 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.514548+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,515 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,515 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.515817+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "non-existent", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:01:30,515 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.515855+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,789 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:30,791 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:30,793 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,794 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.794431+00:00", "data": {"tool": "plan_steps", "arguments": {"request_id": "req-001"}}}
+2025-09-22 23:01:30,794 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.794508+00:00", "data": {"tool": "plan_steps", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,795 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:30,796 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,797 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.797009+00:00", "data": {"tool": "plan_steps", "arguments": {"request_id": "req-002"}}}
+2025-09-22 23:01:30,797 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.797080+00:00", "data": {"tool": "plan_steps", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:30,797 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:30,798 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:30.798314+00:00", "data": {"tool": "plan_steps", "arguments": {"request_id": "req-003"}}}
+2025-09-22 23:01:30,798 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:30.798361+00:00", "data": {"tool": "plan_steps", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,079 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:31,082 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:31,084 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,085 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.085479+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-001"}}}
+2025-09-22 23:01:31,085 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.085572+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,086 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:31,087 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,087 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.087627+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-002"}}}
+2025-09-22 23:01:31,087 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.087692+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,088 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,089 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.088989+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-003"}}}
+2025-09-22 23:01:31,089 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.089079+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,358 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:31,361 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:31,365 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:01:31,365 - __main__ - INFO - Reading resource: resource://artists
+2025-09-22 23:01:31,365 - __main__ - INFO - Successfully returning data for resource://artists
+2025-09-22 23:01:31,366 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,367 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.367085+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-001"}}}
+2025-09-22 23:01:31,367 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.367168+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,367 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:31,641 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:31,644 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:31,646 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,648 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,648 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.648758+00:00", "data": {"tool": "plan_steps", "arguments": {"request_id": "non-existent"}}}
+2025-09-22 23:01:31,648 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.648820+00:00", "data": {"tool": "plan_steps", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,650 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:31,651 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,651 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.651426+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "non-existent"}}}
+2025-09-22 23:01:31,651 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.651476+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,652 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,652 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.652699+00:00", "data": {"tool": "record_decision", "arguments": {"request_id": "test-req", "decision": {"status": "test", "timestamp": "2025-01-01T00:00:00Z"}}}}
+2025-09-22 23:01:31,652 - __main__ - INFO - Event: {"type": "decision.recorded", "timestamp": "2025-09-23T03:01:31.652761+00:00", "data": {"decision_id": "c0306837-2536-4f25-8c23-39e902833b97", "request_id": "test-req", "status": "test"}}
+2025-09-22 23:01:31,652 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.652792+00:00", "data": {"tool": "record_decision", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,927 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:31,930 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:31,932 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,933 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.933603+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:01:31,933 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.933675+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,934 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:01:31,935 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,935 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.935686+00:00", "data": {"tool": "plan_steps", "arguments": {"request_id": "req-001"}}}
+2025-09-22 23:01:31,935 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.935752+00:00", "data": {"tool": "plan_steps", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,936 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,936 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.936836+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-001"}}}
+2025-09-22 23:01:31,936 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.936894+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:31,937 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:01:31,938 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:01:31.938147+00:00", "data": {"tool": "record_decision", "arguments": {"request_id": "req-001", "decision": {"request_id": "req-001", "status": "success", "validation_result": {"ok": true, "errors": [], "preset_version": 3, "validation_timestamp": "2025-09-23T03:01:31.933670+00:00"}, "plan": {"steps": ["style_tweak_review", "export_unreal_glb", "qa_check", "delivery"], "matched_rules": [{"rule_id": "rule_0", "condition": {"account": "ArcadiaXR", "style": "stylized_hard_surface"}, "action": {"steps": ["style_tweak_review"]}}, {"rule_id": "rule_2", "condition": {"engine": "Unreal"}, "action": {"steps": ["export_unreal_glb"]}}], "estimated_hours": 8, "priority_queue": false}, "assignment": {"artist_id": "a-1", "artist_name": "Ada", "reason": "Best match: matches style stylized_hard_surface, at full capacity", "match_score": 10, "alternative_artists": [{"id": "a-2", "name": "Ben", "score": 7}, {"id": "a-3", "name": "Cleo", "score": 2}]}, "trace": [], "timestamp": "2025-01-01T00:00:00Z"}}}}
+2025-09-22 23:01:31,938 - __main__ - INFO - Event: {"type": "decision.recorded", "timestamp": "2025-09-23T03:01:31.938220+00:00", "data": {"decision_id": "43303985-3b5e-4299-992a-eecd309f9753", "request_id": "req-001", "status": "success"}}
+2025-09-22 23:01:31,938 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:01:31.938251+00:00", "data": {"tool": "record_decision", "duration_ms": 0, "success": true}}
+2025-09-22 23:01:32,211 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:01:32,214 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:01:32,216 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:01:32,216 - __main__ - INFO - Reading resource: resource://requests
+2025-09-22 23:01:32,216 - __main__ - INFO - Successfully returning data for resource://requests
+2025-09-22 23:01:32,217 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:01:32,217 - __main__ - INFO - Reading resource: resource://artists
+2025-09-22 23:01:32,217 - __main__ - INFO - Successfully returning data for resource://artists
+2025-09-22 23:01:32,218 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:01:32,218 - __main__ - INFO - Reading resource: resource://presets
+2025-09-22 23:01:32,218 - __main__ - INFO - Successfully returning data for resource://presets
+2025-09-22 23:01:32,219 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:01:32,219 - __main__ - INFO - Reading resource: resource://rules
+2025-09-22 23:01:32,219 - __main__ - INFO - Successfully returning data for resource://rules
+2025-09-22 23:02:19,842 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:02:19,848 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:02:19,852 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:02:19,853 - mcp.server.lowlevel.server - INFO - Processing request of type ListResourcesRequest
+2025-09-22 23:02:19,855 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:19,855 - __main__ - INFO - Reading resource: resource://requests
+2025-09-22 23:02:19,855 - __main__ - INFO - Successfully returning data for resource://requests
+2025-09-22 23:02:19,856 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:19,856 - __main__ - INFO - Reading resource: resource://artists
+2025-09-22 23:02:19,856 - __main__ - INFO - Successfully returning data for resource://artists
+2025-09-22 23:02:19,857 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:19,857 - __main__ - INFO - Reading resource: resource://presets
+2025-09-22 23:02:19,857 - __main__ - INFO - Successfully returning data for resource://presets
+2025-09-22 23:02:19,858 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:19,859 - __main__ - INFO - Reading resource: resource://rules
+2025-09-22 23:02:19,859 - __main__ - INFO - Successfully returning data for resource://rules
+2025-09-22 23:02:44,950 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:02:44,954 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:02:44,957 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:02:44,958 - mcp.server.lowlevel.server - INFO - Processing request of type ListResourcesRequest
+2025-09-22 23:02:44,960 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:44,960 - __main__ - INFO - Reading resource: resource://requests
+2025-09-22 23:02:44,960 - __main__ - INFO - Successfully returning data for resource://requests
+2025-09-22 23:02:44,961 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:44,961 - __main__ - INFO - Reading resource: resource://artists
+2025-09-22 23:02:44,961 - __main__ - INFO - Successfully returning data for resource://artists
+2025-09-22 23:02:44,962 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:44,962 - __main__ - INFO - Reading resource: resource://presets
+2025-09-22 23:02:44,963 - __main__ - INFO - Successfully returning data for resource://presets
+2025-09-22 23:02:44,963 - mcp.server.lowlevel.server - INFO - Processing request of type ReadResourceRequest
+2025-09-22 23:02:44,964 - __main__ - INFO - Reading resource: resource://rules
+2025-09-22 23:02:44,964 - __main__ - INFO - Successfully returning data for resource://rules
+2025-09-22 23:02:57,906 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:02:57,911 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:02:57,914 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:02:57,915 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:02:57.915062+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:02:57,915 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:02:57.915166+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:02:57,916 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:02:57,917 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:02:57,918 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:02:57.918147+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-002", "account_id": "TitanMfg"}}}
+2025-09-22 23:02:57,918 - __main__ - INFO - Event: {"type": "validation.failed", "timestamp": "2025-09-23T03:02:57.918217+00:00", "data": {"request_id": "req-002", "account_id": "TitanMfg", "error": "invalid_texture_packing", "missing_channels": ["a"]}}
+2025-09-22 23:02:57,918 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:02:57.918252+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:02:57,920 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:02:57,920 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:02:57.920687+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "NonExistentAccount"}}}
+2025-09-22 23:02:57,920 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:02:57.920744+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:02:58,182 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:02:58,185 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:02:58,187 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:02:58,188 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:02:58.188281+00:00", "data": {"tool": "assign_artist", "arguments": {"request_id": "req-003"}}}
+2025-09-22 23:02:58,188 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:02:58.188366+00:00", "data": {"tool": "assign_artist", "duration_ms": 0, "success": true}}
+2025-09-22 23:02:58,189 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:02:58,470 - __main__ - INFO - Starting Kaedim MCP Server...
+2025-09-22 23:02:58,473 - __main__ - INFO - KaedimMCPServer.run() starting event loop...
+2025-09-22 23:02:58,475 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:02:58,476 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:02:58.476071+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:02:58,476 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:02:58.476145+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:02:58,477 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-22 23:02:58,478 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-22 23:02:58,479 - __main__ - INFO - Event: {"type": "tool.called", "timestamp": "2025-09-23T03:02:58.479585+00:00", "data": {"tool": "validate_preset", "arguments": {"request_id": "req-001", "account_id": "ArcadiaXR"}}}
+2025-09-22 23:02:58,479 - __main__ - INFO - Event: {"type": "tool.completed", "timestamp": "2025-09-23T03:02:58.479678+00:00", "data": {"tool": "validate_preset", "duration_ms": 0, "success": true}}
+2025-09-22 23:08:15,902 - mcp_server - INFO - Starting Kaedim MCP Server...

@@ -481,22 +481,69 @@ These events appear in the logs and can be consumed by monitoring systems.
 
 ### **Prerequisites**
 
-- Python 3.11+
-- Virtual environment (recommended)
+- **Python 3.11+** (Required for modern async features and type hints)
+- **Git** (for cloning the repository)
+- **Terminal/Command Line** access
 
-### **Installation**
+### **Quick Start Installation**
 
 ```bash
-# Clone and setup
-git clone <repository>
+# 1. Clone the repository
+git clone https://github.com/BryanTJJ99/Kaedim_MCP_Agent.git
 cd Kaedim_MCP_Agent
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate
+# 2. Create and activate virtual environment
+python3 -m venv .venv
 
-# Install dependencies
+# Activate virtual environment (choose your platform):
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows (Command Prompt):
+# .venv\Scripts\activate.bat
+# On Windows (PowerShell):
+# .venv\Scripts\Activate.ps1
+
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Verify installation
+python3 -c "import mcp; print('✅ MCP SDK installed successfully')"
+```
+
+### **Environment Configuration (Optional)**
+
+For enhanced features like LLM integration, create a `.env` file:
+
+```bash
+# Create .env file for optional configurations
+cat > .env << EOF
+# OpenAI API for LLM-enhanced decision explanations (optional)
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+
+# HTTP MCP Server configuration (for production mode)
+MCP_HTTP_BASE_URL=http://127.0.0.1:8765
+MCP_HTTP_TOKEN=optional_bearer_token
+
+# Logging level (DEBUG, INFO, WARNING, ERROR)
+LOG_LEVEL=INFO
+EOF
+```
+
+### **Verify Setup**
+
+Test that everything is working:
+
+```bash
+# Test stdio-based MCP (should process sample data)
+python3 run_agent.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json
+
+# Check output files were created
+ls -la decisions.json mcp.log
 ```
 
 ### **Data Structure**
@@ -511,6 +558,8 @@ data/
 └── rules.json       # Business workflow rules
 ```
 
+**Sample data is included** - the system comes with realistic test data so you can run it immediately without setup.
+
 ## 🚀 Usage
 
 The system provides **two deployment modes** to demonstrate different MCP communication patterns:
@@ -520,28 +569,33 @@ The system provides **two deployment modes** to demonstrate different MCP commun
 In this mode, the client (`run_agent.py`) launches the MCP server as a child process and communicates over stdio. This is simpler for development and sufficient for single-client scenarios.
 
 ```bash
-# Basic processing - stdio communication
-python3 run_agent.py \
-  --requests data/requests.json \
-  --artists  data/artists.json \
-  --presets  data/presets.json \
-  --rules    data/rules.json
+# Ensure you're in the project directory and virtual environment is active
+cd Kaedim_MCP_Agent
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 
-# With LLM enhancement
+# Basic processing - stdio communication (uses MCPAgent)
 python3 run_agent.py \
   --requests data/requests.json \
-  --artists  data/artists.json \
-  --presets  data/presets.json \
-  --rules    data/rules.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json
+
+# With LLM enhancement (uses LLMEnhancedMCPAgent - requires OPENAI_API_KEY)
+python3 run_agent.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
   --agent-type llm
 
 # Specify custom output file
 python3 run_agent.py \
   --requests data/requests.json \
-  --artists  data/artists.json \
-  --presets  data/presets.json \
-  --rules    data/rules.json \
-  --output my_decisions.json
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
+  --output my_decisions.json \
+  --agent-type llm
 ```
 
 **Architecture**: Client launches server as child process → stdio communication → server terminates with client
@@ -550,21 +604,97 @@ python3 run_agent.py \
 
 For production scenarios with multiple clients or long-lived servers, use the HTTP-based implementation that provides persistent server instances and concurrent client access.
 
+**Step 1: Start the HTTP MCP Server**
+
 ```bash
-# Terminal 1: Start the HTTP MCP server
+# Terminal 1: Start the HTTP MCP server (runs FastAPI with uvicorn)
+cd Kaedim_MCP_Agent
+source .venv/bin/activate
+
+# Start server (accessible at http://127.0.0.1:8765)
 uvicorn mcp_server_http:app --host 127.0.0.1 --port 8765
 
-# Terminal 2: Run the HTTP client
+# With auto-reload for development:
+# uvicorn mcp_server_http:app --host 127.0.0.1 --port 8765 --reload
+
+# For production (with more workers):
+# uvicorn mcp_server_http:app --host 0.0.0.0 --port 8765 --workers 4
+```
+
+**Step 2: Run HTTP Clients**
+
+```bash
+# Terminal 2: Run the HTTP client (basic)
+cd Kaedim_MCP_Agent
+source .venv/bin/activate
+
 python3 run_agent_http.py \
   --requests data/requests.json \
-  --artists  data/artists.json \
-  --presets  data/presets.json \
-  --rules    data/rules.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
+  --server-url http://127.0.0.1:8765
+
+# With LLM enhancement
+python3 run_agent_http.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
   --server-url http://127.0.0.1:8765 \
   --agent-type llm
+
+# With custom output and API token (if server requires authentication)
+python3 run_agent_http.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
+  --server-url http://127.0.0.1:8765 \
+  --agent-type llm \
+  --output http_decisions.json \
+  --api-token your_bearer_token_here
+```
+
+**Step 3: Multiple Concurrent Clients (Demo)**
+
+```bash
+# Terminal 3: Run another client simultaneously
+python3 run_agent_http.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
+  --server-url http://127.0.0.1:8765 \
+  --output client2_decisions.json
+
+# Terminal 4: Monitor server logs while clients run
+curl http://127.0.0.1:8765/health
+curl http://127.0.0.1:8765/tools | jq
+curl http://127.0.0.1:8765/resources | jq
 ```
 
 **Architecture**: Persistent server instance → HTTP API communication → multiple clients can connect
+
+### **Command Line Options Reference**
+
+#### **Common Options (Both Modes)**
+
+| Option | Required | Description | Example |
+|--------|----------|-------------|---------|
+| `--requests` | ✅ | Path to requests JSON file | `data/requests.json` |
+| `--artists` | ✅ | Path to artists JSON file | `data/artists.json` |
+| `--presets` | ✅ | Path to presets JSON file | `data/presets.json` |
+| `--rules` | ✅ | Path to rules JSON file | `data/rules.json` |
+| `--agent-type` | ❌ | Agent type: `mcp` or `llm` | `llm` (default: `mcp`) |
+| `--output` | ❌ | Output file path | `my_decisions.json` (default: `decisions.json`) |
+
+#### **HTTP-Only Options**
+
+| Option | Required | Description | Example |
+|--------|----------|-------------|---------|
+| `--server-url` | ❌ | HTTP server base URL | `http://127.0.0.1:8765` (default) |
+| `--api-token` | ❌ | Bearer token for authentication | `your_token_here` |
 
 ### **When to Use Each Mode**
 
@@ -579,8 +709,198 @@ python3 run_agent_http.py \
 
 ### **Output Files**
 
+Both modes generate the same output files:
+
 - **`decisions.json`** - Complete decisions with rationales and traces (main output)
 - **`mcp.log`** - Tool calls, durations, failures, and events (debugging)
+
+**Example Output Structure**:
+```bash
+# After running either mode:
+ls -la
+# -rw-r--r-- decisions.json     # Main results (JSON array of Decision objects)
+# -rw-r--r-- mcp.log           # Detailed execution logs with timestamps
+
+# View summary
+jq 'map({request_id, status, rationale})' decisions.json
+
+# Count successes/failures
+jq 'group_by(.status) | map({status: .[0].status, count: length})' decisions.json
+```
+
+### **🔧 Troubleshooting**
+
+#### **Common Issues & Solutions**
+
+**1. Virtual Environment Issues**
+```bash
+# Problem: "command not found" or import errors
+# Solution: Ensure virtual environment is active
+source .venv/bin/activate
+which python3  # Should show path inside .venv
+
+# Reinstall dependencies if needed
+pip install -r requirements.txt --force-reinstall
+```
+
+**2. HTTP Server Connection Issues**
+```bash
+# Problem: "Connection refused" when running HTTP client
+# Solution 1: Ensure server is running
+curl http://127.0.0.1:8765/health
+# Should return: {"status": "healthy", "server": "Kaedim MCP HTTP Server"}
+
+# Solution 2: Check if port is already in use
+lsof -i :8765
+# Kill existing process if needed: kill -9 <PID>
+
+# Solution 3: Use different port
+uvicorn mcp_server_http:app --host 127.0.0.1 --port 8766
+python3 run_agent_http.py --server-url http://127.0.0.1:8766 <other_args>
+```
+
+**3. LLM Enhancement Issues**
+```bash
+# Problem: LLM features not working
+# Solution: Check OpenAI API key
+echo $OPENAI_API_KEY  # Should not be empty
+# Or set in .env file
+
+# Test API key
+python3 -c "
+import os
+from openai import OpenAI
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+print('✅ OpenAI API key is valid')
+"
+```
+
+**4. Permission Errors**
+```bash
+# Problem: Permission denied when running scripts
+# Solution: Make scripts executable
+chmod +x run_agent.py run_agent_http.py
+
+# Or use python3 explicitly
+python3 run_agent.py <args>
+```
+
+**5. Data File Issues**
+```bash
+# Problem: "File not found" or "JSON decode error"
+# Solution: Verify data files exist and are valid JSON
+ls -la data/
+jq empty data/requests.json  # Validates JSON syntax
+jq empty data/artists.json
+jq empty data/presets.json
+jq empty data/rules.json
+```
+
+#### **Debug Mode**
+
+Enable verbose logging for troubleshooting:
+
+```bash
+# Set environment variable for debug logging
+export LOG_LEVEL=DEBUG
+
+# For stdio mode:
+python3 run_agent.py --agent-type llm <other_args>
+
+# For HTTP mode:
+LOG_LEVEL=DEBUG uvicorn mcp_server_http:app --host 127.0.0.1 --port 8765
+```
+
+#### **Testing Connection**
+
+Verify MCP protocol communication:
+
+```bash
+# Test stdio-based MCP server directly
+echo '{"method": "ping"}' | python3 mcp_server.py data
+
+# Test HTTP-based MCP server
+curl -X POST http://127.0.0.1:8765/initialize
+curl -X GET http://127.0.0.1:8765/tools
+curl -X GET http://127.0.0.1:8765/resources
+```
+
+## 🧪 Testing
+
+The project includes comprehensive tests to verify functionality:
+
+### **Quick Test Run**
+
+```bash
+# Ensure virtual environment is active
+source .venv/bin/activate
+
+# Run all tests
+python3 test_basic.py
+python3 test_mcp.py
+
+# Test specific functionality
+python3 test_capacity_overflow.py
+```
+
+### **Test Coverage**
+
+- ✅ **Basic Functionality** (`test_basic.py`) - Core MCP operations
+- ✅ **MCP Protocol** (`test_mcp.py`) - Client-server communication
+- ✅ **Capacity Management** (`test_capacity_overflow.py`) - Artist assignment edge cases
+- ✅ **Validation Logic** - Preset validation with various error conditions
+- ✅ **Business Rules** - Workflow planning and rule matching
+- ✅ **Error Handling** - Graceful failure modes and customer messaging
+
+### **Integration Testing**
+
+Test both deployment modes with sample data:
+
+```bash
+# Test stdio mode end-to-end
+python3 run_agent.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
+  --agent-type llm
+
+# Verify output
+jq '.[] | {request_id, status}' decisions.json
+
+# Test HTTP mode end-to-end
+# Terminal 1:
+uvicorn mcp_server_http:app --host 127.0.0.1 --port 8765
+
+# Terminal 2:
+python3 run_agent_http.py \
+  --requests data/requests.json \
+  --artists data/artists.json \
+  --presets data/presets.json \
+  --rules data/rules.json \
+  --server-url http://127.0.0.1:8765 \
+  --agent-type llm \
+  --output http_test_decisions.json
+
+# Compare outputs (should be functionally equivalent)
+diff <(jq -S '.[] | {request_id, status, rationale}' decisions.json) \
+     <(jq -S '.[] | {request_id, status, rationale}' http_test_decisions.json)
+```
+
+### **Performance Testing**
+
+Benchmark the system with larger datasets:
+
+```bash
+# Generate test data (optional - requires custom script)
+# python3 generate_test_data.py --requests 100 --artists 20
+
+# Time execution
+time python3 run_agent.py <args>
+
+# Monitor resource usage
+htop  # or Activity Monitor on macOS
+```
 
 ## 📋 Sample Data
 
@@ -825,6 +1145,65 @@ client = mcp.Client((process.stdin, process.stdout))
 1. Add resource definition to `handle_list_resources()`
 2. Add data loading in server `__init__()`
 3. Add resource mapping in `handle_read_resource()`
+
+### **Development Workflow**
+
+#### **Live Development**
+
+**HTTP Server with Auto-Reload**:
+```bash
+# Development mode with auto-restart on file changes
+uvicorn mcp_server_http:app --host 127.0.0.1 --port 8765 --reload
+
+# Watch specific files only
+uvicorn mcp_server_http:app --reload --reload-dir . --reload-include "*.py"
+```
+
+**VS Code Debugging Configuration**:
+```json
+// .vscode/launch.json
+{
+    "configurations": [
+        {
+            "name": "Debug Stdio Agent",
+            "type": "python",
+            "request": "launch",
+            "program": "run_agent.py",
+            "args": [
+                "--requests", "data/requests.json",
+                "--artists", "data/artists.json", 
+                "--presets", "data/presets.json",
+                "--rules", "data/rules.json",
+                "--agent-type", "llm"
+            ]
+        },
+        {
+            "name": "Debug HTTP Server", 
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["mcp_server_http:app", "--host", "127.0.0.1", "--port", "8765"]
+        }
+    ]
+}
+```
+
+#### **Code Quality**
+
+```bash
+# Install development tools
+pip install black isort mypy flake8
+
+# Format code
+black *.py
+isort *.py
+
+# Type checking
+mypy run_agent.py mcp_server.py
+
+# Linting
+flake8 *.py --max-line-length=120
+```
 
 ---
 
