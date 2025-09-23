@@ -182,7 +182,61 @@ req-001 (ArcadiaXR, Unreal, stylized) →
 Estimated: 14 hours
 ```
 
-**Returns**: `{steps: string[], matched_rules: RuleMatch[], estimated_hours: number, priority_queue: boolean}`
+**Returns**: `**Returns**: `{steps: string[], matched_rules: RuleMatch[], estimated_hours: number, priority_queue: boolean}`
+
+---
+
+### 👩‍🎨 `assign_artist(request_id)`
+
+**"Who's the best available artist for this specific request right now?"**
+
+**The Problem**: Different artists have different specialties, availability, and workloads. A stylized character expert shouldn't get assigned a realistic vehicle, and overloaded artists shouldn't get more work. The system needs intelligent matching that considers skills, capacity, and business priorities.
+
+**The Logic**:
+
+**1. Skill Scoring**: Calculate how well each artist matches the request requirements
+**2. Priority Assessment**: Check if this request needs expedited handling  
+**3. Capacity Filtering**: Only consider artists with available slots
+**4. Lexicographic Ranking**: Sort by skill match → priority → capacity → load
+**5. Selection**: Pick the top candidate with alternatives
+
+### **How Artist Matching Works**
+
+**Skill Scoring System**:
+
+- **Style match**: +10 points (highest weight - specialization matters most)
+- **Engine match**: +5 points (technical compatibility)
+- **Topology match**: +5 points (workflow compatibility)
+- **Priority boost**: +6 points (business priority, soft tiebreaker only)
+
+**Lexicographic Ranking** (not simple point totals):
+
+1. **Skill score** (20 max) - Best technical fit first
+2. **Priority flag** - Expedited requests get precedence if artist available
+3. **Available capacity** - More available slots = higher rank
+4. **Current load** - Less busy artists preferred
+5. **Artist name** - Deterministic tiebreaker
+
+**Real-World Example**:
+
+```
+Request: Unreal, stylized_hard_surface, priority
+├─ Ada: skill_score=15 (style+engine), available=0 → Excluded (at capacity)
+├─ Ben: skill_score=10 (engine only), available=1, priority_boost=true → Selected
+├─ Cleo: skill_score=5 (topology only), available=1 → Alternative
+└─ Result: "Ben assigned - matches engine unreal, priority boost, has 1 slots available"
+```
+
+| **Signal**     | **Points** | **Notes**                                                     |
+| -------------- | :--------: | ------------------------------------------------------------- |
+| Style match    |    +10     | Underscore tolerant. Partial matching (e.g., "stylized").     |
+| Engine match   |     +5     | Case-insensitive comparison with artist skills.               |
+| Topology match |     +5     | Workflow compatibility (e.g., "quad_only").                   |
+| Priority boost |     +6     | Only if rules set `priority_queue=true` AND artist available. |
+
+> **Max skill score: 20 points.** Priority boost is lexicographic precedence, not additive scoring.
+
+---`
 
 ---
 
