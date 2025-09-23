@@ -486,10 +486,13 @@ class LLMEnhancedMCPAgent(MCPAgent):
         step = 0
 
         tool_schemas = [
+            # pseudo-tool for resource fetch (client maps to session.read_resource)
             {"name": "read_resource", "desc": "Read a server resource. Args: {uri: 'resource://requests'|'resource://artists'|'resource://presets'|'resource://rules'}"},
+            # REAL tools (must match server.list_tools() names exactly)
             {"name": "validate_preset", "desc": "Validate request against customer preset. Args: {request_id: str, account_id: str}"},
             {"name": "plan_steps", "desc": "Generate processing steps. Args: {request_id: str}"},
             {"name": "assign_artist", "desc": "Assign to an artist. Args: {request_id: str}"},
+            # virtual control action (client-side only)
             {"name": "finish", "desc": "Stop and return final decision fields. Args: {status, rationale, customer_message?, clarifying_question?}"},
         ]
 

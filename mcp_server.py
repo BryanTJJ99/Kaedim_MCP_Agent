@@ -314,7 +314,7 @@ class KaedimMCPServer:
                 "error": f"Request {request_id} not found",
             }
 
-        steps = ["initial_review", "modeling", "texturing", "qa_check", "delivery"]
+        steps = ["qa_check", "delivery"]
         matched_rules = []
 
         # Apply rules
@@ -356,77 +356,120 @@ class KaedimMCPServer:
         }
 
     async def _assign_artist(self, request_id: str) -> Dict[str, Any]:
-        """Assign request to optimal artist"""
+        """Assign request to optimal artist with priority-aware, capacity-aware, lexicographic ranking."""
         request = next((r for r in self.requests if r["id"] == request_id), None)
         if not request:
-            return {"artist_id": None, "reason": f"Request {request_id} not found"}
+            return {"artist_id": None, "reason": f"Request {request_id} not found", "alternative_artists": []}
 
-        style = request.get("style", "")
-        engine = request.get("engine", "").lower()
-        topology = request.get("topology", "")
+        style = (request.get("style") or "").lower()
+        engine = (request.get("engine") or "").lower()
+        topology = (request.get("topology") or "").lower()
 
-        # Score artists based on skills and capacity
-        artist_scores = []
+        # Determine if this request should be expedited based on rules (priority_queue)
+        def _is_priority(req: Dict[str, Any]) -> bool:
+            for rule in self.rules:
+                cond = rule.get("if", {})
+                if all(req.get(k) == v for k, v in cond.items()):
+                    if rule.get("then", {}).get("queue") == "expedite":
+                        return True
+            return False
 
+        is_priority = _is_priority(request)
+
+        rows = []
         for artist in self.artists:
-            score = 0
             reasons = []
-
-            # Check skill match
             skills = [s.lower() for s in artist.get("skills", [])]
 
-            if style in skills or style.replace("_", " ") in " ".join(skills):
-                score += 10
+            # --- Skill match buckets ---
+            skill_score = 0
+            if style and (style in skills or style.replace("_", " ") in " ".join(skills)):
+                skill_score += 10
                 reasons.append(f"matches style {style}")
-
-            if engine in skills:
-                score += 5
+            if engine and engine in skills:
+                skill_score += 5
                 reasons.append(f"matches engine {engine}")
-
             if topology and topology in " ".join(skills):
-                score += 5
+                skill_score += 5
                 reasons.append(f"matches topology {topology}")
 
-            # Check capacity
-            capacity = artist.get("capacity_concurrent", 1)
-            load = artist.get("active_load", 0)
-            available_capacity = capacity - load
-
+            # --- Capacity / load ---
+            capacity = int(artist.get("capacity_concurrent", 1))
+            load = int(artist.get("active_load", 0))
+            available_capacity = max(0, capacity - load)
             if available_capacity > 0:
-                score += available_capacity * 2
                 reasons.append(f"has {available_capacity} slots available")
             else:
-                score = 0  # Can't assign if at capacity
-                reasons = ["at full capacity"]
+                reasons.append("at full capacity")
 
-            artist_scores.append({"artist": artist, "score": score, "reasons": reasons})
+            # --- Soft score (only for tiebreaks) ---
+            score = 0
+            score += available_capacity * 2
+            # small nudge for explicit matches (mirrors earlier logic but weaker than lexicographic sort)
+            score += skill_score
 
-        # Sort by score
-        artist_scores.sort(key=lambda x: x["score"], reverse=True)
+            # --- Priority nudge flags (lexicographic, not just score) ---
+            priority_flag = 1 if (is_priority and available_capacity > 0) else 0
+            if is_priority:
+                if available_capacity > 0:
+                    reasons.append("priority boost (available)")
+                    score += 6  # soft nudge for visibility
+                else:
+                    reasons.append("priority de-rank (full)")
+                    score -= 6
 
-        if artist_scores and artist_scores[0]["score"] > 0:
-            selected = artist_scores[0]
+            rows.append({
+                "artist": artist,
+                "reasons": reasons,
+                "skill_score": skill_score,
+                "available_capacity": available_capacity,
+                "load": load,
+                "priority_flag": priority_flag,
+                "score": score,  # fallback tiebreaker
+            })
+
+        # Lexicographic ordering:
+        # 1) Most skilled
+        # 2) Priority & available now
+        # 3) More available capacity
+        # 4) Lower current load
+        # 5) Higher fallback score
+        rows.sort(
+            key=lambda r: (
+                r["skill_score"],
+                r["priority_flag"],
+                r["available_capacity"],
+                -r["load"],   # (reverse=True) => lower load ranks earlier
+                r["score"],
+            ),
+            reverse=True,
+        )
+
+        top = rows[0] if rows else None
+        if top and (top["skill_score"] > 0 or top["available_capacity"] > 0):
             return {
-                "artist_id": selected["artist"]["id"],
-                "artist_name": selected["artist"]["name"],
-                "reason": f"Best match: {', '.join(selected['reasons'])}",
-                "match_score": selected["score"],
+                "artist_id": top["artist"]["id"],
+                "artist_name": top["artist"]["name"],
+                "reason": f"Best match: {', '.join(top['reasons'])}",
+                "match_score": top["score"],  # keep for transparency
                 "alternative_artists": [
                     {
-                        "id": a["artist"]["id"],
-                        "name": a["artist"]["name"],
-                        "score": a["score"],
+                        "id": r["artist"]["id"],
+                        "name": r["artist"]["name"],
+                        "score": r["score"],
                     }
-                    for a in artist_scores[1:3]
-                    if a["score"] > 0
+                    for r in rows[1:3]
+                    if r["skill_score"] > 0 or r["available_capacity"] > 0
                 ],
             }
-        else:
-            return {
-                "artist_id": None,
-                "reason": "No available artists with matching skills",
-                "alternative_artists": [],
-            }
+
+        return {
+            "artist_id": None,
+            "reason": "No available artists with matching skills",
+            "alternative_artists": [],
+        }
+
+
 
     async def _record_decision(
         self, request_id: str, decision_data: Dict[str, Any]
