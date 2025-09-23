@@ -204,10 +204,6 @@ Estimated: 14 hours
 
 **Skill Scoring System**:
 
-- **Style match**: +10 points (highest weight - specialization matters most)
-- **Engine match**: +5 points (technical compatibility)
-- **Topology match**: +5 points (workflow compatibility)
-- **Priority boost**: +6 points (business priority, soft tiebreaker only)
 
 **Lexicographic Ranking** (not simple point totals):
 
@@ -227,76 +223,9 @@ Request: Unreal, stylized_hard_surface, priority
 └─ Result: "Ben assigned - matches engine unreal, priority boost, has 1 slots available"
 ```
 
-| **Signal**     | **Points** | **Notes**                                                     |
-| -------------- | :--------: | ------------------------------------------------------------- |
-| Style match    |    +10     | Underscore tolerant. Partial matching (e.g., "stylized").     |
-| Engine match   |     +5     | Case-insensitive comparison with artist skills.               |
-| Topology match |     +5     | Workflow compatibility (e.g., "quad_only").                   |
-| Priority boost |     +6     | Only if rules set `priority_queue=true` AND artist available. |
-
-> **Max skill score: 20 points.** Priority boost is lexicographic precedence, not additive scoring.
-
----`
 
 ---
 
-### 👩‍🎨 `assign_artist(request_id)`
-
-**Goal:** pick the best available artist **right now** given skills, engine, topology, priority, and capacity.
-
-## How it works (at a glance)
-
-### 1) Gather request context
-
-- From `requests.json`: `style`, `engine`, `topology`, `priority`
-- From `plan_steps`: whether `priority_queue` is `true` (comes from rules)
-
-### 2) Score each artist by fit
-
-Start at 0; add points for matches:
-
-- **Engine match** (e.g., _unreal_, _unity_): **+5**
-- **Style match** (e.g., _stylized_hard_surface_, _realistic_, _lowpoly_): **+5**
-- **Topology match** (e.g., _quad_only_): **+5**
-- **Priority nudge** (if request is `priority` or `priority_queue` is `true`): **+2**
-
-> Skills are compared case-insensitively; style keys with underscores are matched loosely (e.g., `stylized_hard_surface` matches skills containing “stylized” and “hard surface”).
-
-### 3) Capacity-aware filtering
-
-Only artists with **available slots** are eligible:
-
-- `available = capacity_concurrent - active_load`
-- If `available <= 0`, the artist is **excluded** from selection (but can still appear as an alternative if you prefer—see notes).
-- Capacity also acts as a **soft tiebreaker** (fewer active jobs is better).
-
-### 4) Deterministic selection
-
-Sort candidates by:
-
-1. **match score** (desc)
-2. **active_load** (asc) — prefer the less loaded artist
-3. **name** (asc) — deterministic final tiebreaker
-
-- Pick the top as **selected**.
-- Keep 1–2 next-best as **`alternative_artists`** (with their scores).
-
-### 5) Return a concise, human-readable reason
-
-E.g., “Best match: matches engine unreal, matches topology quad_only, has 1 slots available”.
-
-## Scoring details
-
-| Signal         | Points | Notes                                                                                 |
-| -------------- | :----: | ------------------------------------------------------------------------------------- |
-| Engine match   |   +5   | From `request.engine`; compared to artist skills (lowercased).                        |
-| Style match    |   +5   | Underscore → space tolerant. Partial tokens allowed (e.g., “stylized”).               |
-| Topology match |   +5   | E.g., `quad_only`.                                                                    |
-| Priority nudge |   +2   | Applied if `request.priority == "priority"` or `plan_steps.priority_queue` is `true`. |
-
-> **Max nominal score is 17.** You can later weight/extend without changing the API.
-
----
 
 ### 📝 **`record_decision(request_id, decision)`**
 
