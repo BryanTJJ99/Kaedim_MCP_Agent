@@ -2,7 +2,7 @@
 
 A **Model Context Protocol (MCP)** implementation for intelligent 3D asset request processing. This system automates the complete lifecycle of 3D asset creation requests—from initial validation through artist assignment to final delivery—using an event-driven, tool-based architecture that mirrors real-world production pipelines.
 
-## 🎯 What This System Does
+## What This System Does
 
 Imagine you run a 3D asset creation studio that receives hundreds of requests daily. Each request needs to be:
 
@@ -14,7 +14,7 @@ Imagine you run a 3D asset creation studio that receives hundreds of requests da
 
 This MCP system automates that entire process, making intelligent decisions while providing clear explanations and graceful error handling.
 
-## 🏗 Architecture
+## Architecture
 
 The system demonstrates **two MCP deployment patterns** to showcase different use cases:
 
@@ -53,6 +53,8 @@ The system demonstrates **two MCP deployment patterns** to showcase different us
 │       ...           │                     │                     │
 └─────────────────────┘                     └─────────────────────┘
 ```
+
+
 
 ## 🛠 MCP Tools: The Heart of the System
 
@@ -354,7 +356,12 @@ Let's trace through a real scenario:
 🔍 New request arrives: stylized_hard_surface, Unreal engine
 ```
 
-**Current System Behavior**:
+
+
+
+## **Current System Limitation**:
+
+**The Problem**: When all artists reach capacity, the system provides misleading feedback to customers.
 
 1. **assign_artist tool runs** → Scores all artists but sets score = 0 for anyone at capacity
 2. **No artists have score > 0** → Returns `{artist_id: None, reason: "No available artists"}`
@@ -387,48 +394,6 @@ Let's trace through a real scenario:
 > **💡 This limitation is covered in the Future Work section, which proposes an intelligent queuing system!**
 
 ---
-
-## ⚠️ Current System Limitations
-
-While this MCP implementation demonstrates core concepts effectively, several limitations make it unsuitable for production use without enhancements:
-
-### **🚫 Critical Limitation: No Real Queuing System**
-
-**The Problem**: When all artists reach capacity, the system provides misleading feedback to customers.
-
-**Current Behavior**:
-
-```python
-# In _assign_artist() - when all artists are at capacity:
-if available_capacity > 0:
-    score += available_capacity * 2
-else:
-    score = 0  # ❌ Zero score = can't assign
-
-# Result when ALL artists have score = 0:
-return {
-    "artist_id": None,
-    "reason": "No available artists with matching skills"
-}
-```
-
-**Client Response**:
-
-```python
-# In process_request() - misleading customer communication:
-elif not assignment_result.get("artist_id"):
-    status = "assignment_failed"  # ❌ Not really "failed"
-    customer_message = "Your request is queued and will be assigned soon."  # ❌ LIE!
-    clarifying_question = "Would you like priority processing?"  # ❌ False hope
-```
-
-**Real-World Impact**:
-
-- **Customer Experience**: Told they're "queued" when no queue exists
-- **Business Operations**: No visibility into actual demand overflow
-- **Revenue Loss**: Requests marked as "failed" instead of properly queued
-- **Scaling Decisions**: No data on when to hire additional artists
-
 ### **📊 Other Current Limitations**
 
 #### **1. Static Capacity Model**
@@ -454,12 +419,6 @@ elif not assignment_result.get("artist_id"):
 - Server is stateless (decisions lost on restart)
 - No integration with external project management systems
 - No historical data for analytics or optimization
-
-#### **5. Basic Error Handling**
-
-- Generic error messages for complex validation failures
-- No retry mechanisms for transient failures
-- Limited customer guidance for resolving issues
 
 ---
 
